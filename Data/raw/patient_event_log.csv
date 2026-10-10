@@ -1,0 +1,15 @@
+case_id,activity,timestamp,resource
+P001,Registration,2026-10-01 09:00:00,Reception
+P001,Triage,2026-10-01 09:20:00,Nurse
+P001,Doctor Consultation,2026-10-01 10:00:00,Doctor
+P001,Lab Test,2026-10-01 10:30:00,Lab
+P001,Discharge,2026-10-01 12:00:00,Reception
+P002,Registration,2026-10-01 09:10:00,Reception
+P002,Triage,2026-10-01 09:50:00,Nurse
+P002,Doctor Consultation,2026-10-01 11:00:00,Doctor
+P002,Discharge,2026-10-01 11:45:00,Reception
+P003,Registration,2026-10-01 10:00:00,Reception
+P003,Triage,2026-10-01 10:15:00,Nurse
+P003,Doctor Consultation,2026-10-01 10:45:00,Doctor
+P003,Lab Test,2026-10-01 11:00:00,Lab
+P003,Discharge,2026-10-01 13:30:00,Reception

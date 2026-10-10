@@ -1,0 +1,15 @@
+case_id,activity,timestamp,resource,time_gap_minutes
+P001,Registration,2026-10-01 09:00:00,Reception,
+P001,Triage,2026-10-01 09:20:00,Nurse,20.0
+P001,Doctor Consultation,2026-10-01 10:00:00,Doctor,40.0
+P001,Lab Test,2026-10-01 10:30:00,Lab,30.0
+P001,Discharge,2026-10-01 12:00:00,Reception,90.0
+P002,Registration,2026-10-01 09:10:00,Reception,
+P002,Triage,2026-10-01 09:50:00,Nurse,40.0
+P002,Doctor Consultation,2026-10-01 11:00:00,Doctor,70.0
+P002,Discharge,2026-10-01 11:45:00,Reception,45.0
+P003,Registration,2026-10-01 10:00:00,Reception,
+P003,Triage,2026-10-01 10:15:00,Nurse,15.0
+P003,Doctor Consultation,2026-10-01 10:45:00,Doctor,30.0
+P003,Lab Test,2026-10-01 11:00:00,Lab,15.0
+P003,Discharge,2026-10-01 13:30:00,Reception,150.0
