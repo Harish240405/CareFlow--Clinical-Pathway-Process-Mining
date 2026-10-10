@@ -1,0 +1,14 @@
+case_id,activity,timestamp
+P001,Registration,2026-10-01 09:00:00
+P001,Triage,2026-10-01 09:15:00
+P001,Doctor Consultation,2026-10-01 09:55:00
+P001,Lab Test,2026-10-01 10:25:00
+P001,Discharge,2026-10-01 11:00:00
+P002,Registration,2026-10-02 08:00:00
+P002,Triage,2026-10-02 08:40:00
+P002,Doctor Consultation,2026-10-02 09:50:00
+P002,Discharge,2026-10-02 10:35:00
+P003,Registration,2026-10-03 10:00:00
+P003,Triage,2026-10-03 10:15:00
+P003,Doctor Consultation,2026-10-03 10:45:00
+P003,Discharge,2026-10-03 11:15:00
