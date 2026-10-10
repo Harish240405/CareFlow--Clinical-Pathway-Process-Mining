@@ -70,8 +70,3 @@ fig.tight_layout()
 fig.savefig(OUTPUT_FILE, dpi=300, bbox_inches="tight")
 print(f"Chart saved to: {OUTPUT_FILE}")
 plt.show()
-df = pd.read_csv(INPUT_FILE)
-
-print("Dataset loaded successfully!")
-print(df.head())
-print("Columns:", df.columns.tolist())
