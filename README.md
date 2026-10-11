@@ -13,7 +13,7 @@ to identify workflow variations and potential waiting-time bottlenecks.
 ## Project Structure
 - `main.py` - Python event simulator
 - `Data/` - Dataset files and documentation
-- `Notebook/` - Exploratory analysis
+- `Notebook/` - Exploratory analysis 
 - `Reports/` - Project reports
 - `Visuals/` - Charts and diagrams
 
