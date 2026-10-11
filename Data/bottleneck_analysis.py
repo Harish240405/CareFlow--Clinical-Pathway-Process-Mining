@@ -33,3 +33,11 @@ plt.show()
 print("Chart saved to:", output_file)
 print("\nTransitions with the highest average elapsed time:")
 print(df[["transition", "mean", "median", "max"]].to_string(index=False))
+# Save transition summary to CSV
+summary_file = DATA_DIR / "bottleneck_summary.csv"
+
+df[["transition", "mean", "median", "max"]].to_csv(
+    summary_file, index=False
+)
+
+print(f"Summary saved to: {summary_file}")
