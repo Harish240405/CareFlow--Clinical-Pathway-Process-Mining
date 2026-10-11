@@ -41,8 +41,30 @@ The project demonstrates how Python and pandas can summarize patient pathways an
 - Investigate waiting times between consecutive activities.
 - Visualize patient journeys.
 - Document findings and upload the final project files to GitHub.
-8. Elapsed Time Analysis
 
+8. Elapsed Time Analysis
+### Methodology
+
+Patient elapsed time was calculated as the difference
+between the first and last recorded event timestamps
+for each patient.
+
+### Interpretation
+
+Elapsed time represents the total duration of the
+observed patient journey. It includes both activity
+time and waiting time between recorded events.
+
+Longer journeys should be investigated alongside
+activity-level waiting-time analysis to identify
+potential bottlenecks.
+
+### Limitations
+
+The results depend on the completeness and accuracy
+of event timestamps. Patients with only one recorded
+event have an elapsed time of zero and may represent
+incomplete journeys.
 Objective
 
 Compare the elapsed time between the first and last recorded clinical events for each patient case.
@@ -54,6 +76,16 @@ P001| 5| 180
 P002| 4| 155
 P003| 5| 210
 Mean| —| 181.67
+The elapsed-time analysis processed 3 patient journeys.
+
+- Median elapsed time: 120 minutes.
+- 75th percentile elapsed time: 137.5 minutes.
+- Maximum elapsed time: 155 minutes.
+
+Elapsed time was calculated as the difference between
+the first and last recorded event timestamps for each
+patient. These results are preliminary because the
+dataset contains only three patient journeys.
 
 Key Findings
 
@@ -78,3 +110,38 @@ Next Steps
 - Investigate time gaps between consecutive activities.
 - Compare patient pathways and identify potential bottlenecks.
 - Update visualizations and document findings for the final project presentation.
+
+Elapsed-Time Analysis
+
+Objective
+
+Measure the total elapsed time between the first and last recorded events for each patient.
+
+Method
+
+Events were grouped by patient and ordered by timestamp. Elapsed time was calculated as the difference between the first and last recorded timestamps.
+
+Results
+
+The current dataset contains three patient journeys:
+
+- P001: 120 minutes (2 hours)
+- P002: 155 minutes (2 hours 35 minutes)
+- P003: 75 minutes (1 hour 15 minutes)
+
+The longest recorded journey was P002, at 155 minutes. The shortest was P003, at 75 minutes.
+
+Interpretation
+
+Elapsed time represents the overall recorded journey duration, not waiting time alone. The activity-transition chart can help identify transitions that warrant further investigation.
+
+Limitations
+
+The analysis includes only three patient journeys. Results are preliminary and may not represent typical hospital performance. Timestamp accuracy, missing events, and differences in patient pathways may affect the results.
+
+Next Steps
+
+- Validate event timestamps and sequences.
+- Investigate long gaps between consecutive activities.
+- Compare elapsed time across a larger dataset.
+- Document findings and update project visualizations.

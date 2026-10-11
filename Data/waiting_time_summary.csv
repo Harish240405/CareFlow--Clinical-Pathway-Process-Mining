@@ -1,0 +1,12 @@
+previous_activity,activity,count,mean,median,max
+Sample Collected,Lab Results Available,355,53.71,56.0,90.0
+Triage,Doctor Consultation,500,38.45,32.0,120.0
+Treatment,Admission,96,36.81,37.0,60.0
+Treatment,Discharge,404,35.63,36.0,60.0
+Lab Test Ordered,Sample Collected,355,19.76,20.0,35.0
+Doctor Consultation,Treatment,145,17.83,19.0,30.0
+Results Reviewed,Treatment,355,17.44,18.0,30.0
+Lab Results Available,Results Reviewed,355,14.66,14.0,25.0
+Doctor Consultation,Lab Test Ordered,355,12.58,13.0,20.0
+Patient Arrival,Registration,500,8.65,9.0,15.0
+Registration,Triage,500,7.57,7.0,12.0
