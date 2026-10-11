@@ -41,3 +41,40 @@ The project demonstrates how Python and pandas can summarize patient pathways an
 - Investigate waiting times between consecutive activities.
 - Visualize patient journeys.
 - Document findings and upload the final project files to GitHub.
+8. Elapsed Time Analysis
+
+Objective
+
+Compare the elapsed time between the first and last recorded clinical events for each patient case.
+
+Results
+
+Patient Case| Number of Events| Elapsed Time (Minutes)
+P001| 5| 180
+P002| 4| 155
+P003| 5| 210
+Mean| —| 181.67
+
+Key Findings
+
+- P001 had an elapsed time of 180 minutes (3 hours).
+- P002 had the shortest elapsed time at 155 minutes (2 hours 35 minutes).
+- P003 had the longest elapsed time at 210 minutes (3 hours 30 minutes).
+- The difference between the longest and shortest elapsed times was 55 minutes.
+
+Methodology
+
+Elapsed time was calculated by subtracting the first recorded timestamp from the last recorded timestamp for each case. Events were grouped by "case_id" and ordered using their timestamps.
+
+Limitations
+
+- The dataset contains only three patient cases, so the results are preliminary.
+- Elapsed time is not the same as waiting time; it can include consultations, laboratory activities, and other care processes.
+- Further validation is needed to determine whether recorded time gaps represent actual waiting periods or other intervals.
+
+Next Steps
+
+- Validate timestamps and event sequences.
+- Investigate time gaps between consecutive activities.
+- Compare patient pathways and identify potential bottlenecks.
+- Update visualizations and document findings for the final project presentation.
