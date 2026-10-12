@@ -30,3 +30,61 @@ The dataset contains only three patient journeys, so these findings are prelimin
 6. Conclusion
 
 The analysis identifies transitions that may deserve further investigation. Additional data is needed to validate these findings and recommend workflow changes.
+
+# CareFlow: Patient Pathway Findings
+
+## Bottleneck Analysis
+
+The analysis identifies activity transitions with
+high average elapsed times in the synthetic patient event log.
+
+The longest visible transition is
+Sample Collected to Lab Results Available,
+with an average elapsed time of approximately 53.71 minutes.
+
+Other transitions with high elapsed times include
+Triage to Doctor Consultation and
+Treatment to Admission.
+
+## Recommendation
+
+Investigate delays in laboratory result processing,
+doctor consultation, and patient admission.
+These findings are based on synthetic data and
+require validation against real hospital data.
+
+# CareFlow – Patient Pathway Findings
+
+## 1. Project Overview
+CareFlow analyzes synthetic hospital patient event logs
+to identify delays in patient pathways.
+
+## 2. Process Discovery
+- Patient cases: 500
+- Total events: 4,420
+- Activities: 11
+
+## 3. Bottleneck Analysis
+The waiting-time analysis identifies transitions
+with high average elapsed times.
+
+The longest transition visible in the current
+summary is Sample Collected → Lab Results Available,
+with an average of approximately 53.71 minutes.
+
+Other transitions with high elapsed times include
+Triage → Doctor Consultation and
+Treatment → Admission.
+
+## 4. Recommendations
+- Investigate delays in laboratory result processing.
+- Review the time taken for doctor consultations.
+- Analyze delays in admission and discharge processes.
+
+## 5. Conclusion
+CareFlow demonstrates how process mining and
+waiting-time analysis can help identify potential
+bottlenecks in a simulated hospital workflow.
+
+Note: These findings are based on synthetic data,
+not actual hospital records.
