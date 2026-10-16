@@ -1,12 +1,6 @@
 previous_activity,activity,average_minutes,median_minutes,maximum_minutes,number_of_cases
-Sample Collected,Lab Results Available,53.707042253521124,56.0,90.0,355
-Triage,Doctor Consultation,38.45,32.0,120.0,500
-Treatment,Admission,36.8125,37.0,60.0,96
-Treatment,Discharge,35.62623762376238,36.0,60.0,404
-Lab Test Ordered,Sample Collected,19.75774647887324,20.0,35.0,355
-Doctor Consultation,Treatment,17.82758620689655,19.0,30.0,145
-Results Reviewed,Treatment,17.442253521126762,18.0,30.0,355
-Lab Results Available,Results Reviewed,14.664788732394365,14.0,25.0,355
-Doctor Consultation,Lab Test Ordered,12.577464788732394,13.0,20.0,355
-Patient Arrival,Registration,8.646,9.0,15.0,500
-Registration,Triage,7.572,7.0,12.0,500
+Lab Test,Discharge,120.0,120.0,150.0,2
+Triage,Doctor Consultation,46.666666666666664,40.0,70.0,3
+Doctor Consultation,Discharge,45.0,45.0,45.0,1
+Registration,Triage,25.0,20.0,40.0,3
+Doctor Consultation,Lab Test,22.5,22.5,30.0,2
