@@ -5,7 +5,7 @@ import pandas as pd
 DATA_DIR = Path(__file__).resolve().parent
 
 # Load the event log
-input_file = DATA_DIR / "synthetic_event_log.csv"
+input_file = DATA_DIR / "raw" / "patient_event_log.csv"
 df = pd.read_csv(input_file, parse_dates=["timestamp"])
 
 # Sort events in chronological order for each patient
