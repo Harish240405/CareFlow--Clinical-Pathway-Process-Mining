@@ -1,4 +1,4 @@
-patient_id,first_event,last_event,event_count,elapsed_minutes,elapsed_hours
+case_id,first_event,last_event,event_count,elapsed_minutes,elapsed_hours
 P001,2026-10-01 09:00:00,2026-10-01 11:00:00,5,120.0,2.0
 P002,2026-10-02 08:00:00,2026-10-02 10:35:00,4,155.0,2.5833333333333335
 P003,2026-10-03 10:00:00,2026-10-03 11:15:00,4,75.0,1.25

@@ -1,0 +1,33 @@
+CareFlow Project – Week 2 Findings
+
+Objective
+
+Analyze patient waiting times between consecutive healthcare activities and identify potential workflow bottlenecks.
+
+Results
+
+- Longest average transition: Lab Test → Discharge — 120 minutes.
+- Second-longest average: Triage → Doctor Consultation — 46.67 minutes.
+- Third-longest average: Doctor Consultation → Discharge — 45 minutes.
+- Registration → Triage averages 25 minutes.
+- Doctor Consultation → Lab Test averages 22.5 minutes.
+
+Interpretation
+
+The Lab Test → Discharge transition has the highest observed average time. This may indicate a delay between laboratory testing and patient discharge. The Triage → Doctor Consultation transition also warrants investigation.
+
+Limitations
+
+The results cover a small number of cases. The Lab Test → Discharge transition includes only two cases, so additional data is needed before concluding that this is a consistent bottleneck.
+
+Next Steps
+
+1. Validate the timestamps and waiting-time calculations.
+2. Investigate the longest transitions.
+3. Collect more patient-case data.
+4. Compare waiting times across cases and activities.
+5. Integrate the findings into the CareFlow dashboard.
+
+Status
+
+Week 2: Waiting-time comparison chart generated and saved as "Data/waiting_time_comparison.png". Waiting-time findings documented.

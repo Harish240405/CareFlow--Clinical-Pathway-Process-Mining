@@ -1,90 +1,87 @@
-CareFlow Patient Pathway Findings
+CareFlow – Patient Pathway Findings
 
 1. Project Overview
 
-The CareFlow project analyzes patient journey event timestamps to understand elapsed times, activity transitions, and potential workflow bottlenecks.
+CareFlow is a Python-based project that analyzes patient event logs to understand patient journey durations, activity transitions, and potential workflow bottlenecks.
 
-2. Key Findings
+The Week 2 analysis uses a small synthetic dataset of patient activities and timestamps.
 
-- The longest average activity transition is Sample Collected → Lab Results Available, at approximately 53.71 minutes.
-- Triage → Doctor Consultation takes approximately 38.45 minutes on average.
-- Treatment → Admission takes approximately 36.81 minutes on average.
-- Treatment → Discharge takes approximately 35.63 minutes on average.
+2. Dataset and Validation
 
-3. Data Validation
+- Total event records: 13
+- Patient cases analyzed: 3
+- Required columns: case_id, activity, timestamp
+- Missing values detected: 0
+- Duplicate rows detected: 0
+- Invalid timestamps detected: 0
+- Duplicate events detected: 0
 
-- Invalid timestamps detected: 0.
-- Duplicate events detected: 0.
-- The current analysis uses a small synthetic dataset.
+The event log passed the validation checks performed by the current validation script.
 
-4. Limitations
+3. Patient Elapsed-Time Analysis
 
-The dataset contains only three patient journeys, so these findings are preliminary. Elapsed time between events does not necessarily represent staff waiting time or operational delay.
+The elapsed-time analysis calculates the time between each patient's first recorded event and last recorded event.
 
-5. Recommendations
+Patient Case| Events| Elapsed Time
+P001| 5| 120 minutes
+P002| 4| 155 minutes
+P003| 4| 75 minutes
 
-- Investigate laboratory processing time.
-- Review the triage-to-consultation workflow.
-- Analyze a larger dataset before drawing operational conclusions.
+Summary
 
-6. Conclusion
+- Average elapsed time: 116.67 minutes
+- Median elapsed time: 120 minutes
+- Shortest journey: 75 minutes
+- Longest journey: 155 minutes
+- Difference between longest and shortest journeys: 80 minutes
 
-The analysis identifies transitions that may deserve further investigation. Additional data is needed to validate these findings and recommend workflow changes.
+P002 had the longest recorded journey, while P003 had the shortest.
 
-# CareFlow: Patient Pathway Findings
+4. Activity Transition Analysis
 
-## Bottleneck Analysis
+The waiting-time comparison identified the following transitions:
 
-The analysis identifies activity transitions with
-high average elapsed times in the synthetic patient event log.
+Activity Transition| Average Minutes| Median Minutes| Maximum Minutes| Cases
+Lab Test → Discharge| 120.00| 120| 150| 2
+Triage → Doctor Consultation| 46.67| 40| 70| 3
+Doctor Consultation → Discharge| 45.00| 45| 45| 1
+Registration → Triage| 25.00| 20| 40| 3
+Doctor Consultation → Lab Test| 22.50| 22.5| 30| 2
 
-The longest visible transition is
-Sample Collected to Lab Results Available,
-with an average elapsed time of approximately 53.71 minutes.
+Lab Test → Discharge has the highest observed average transition time at 120 minutes.
 
-Other transitions with high elapsed times include
-Triage to Doctor Consultation and
-Treatment to Admission.
+Triage → Doctor Consultation also warrants investigation, with an average transition time of approximately 46.67 minutes.
 
-## Recommendation
+These transition times represent elapsed time between recorded activities and do not necessarily measure actual waiting time.
 
-Investigate delays in laboratory result processing,
-doctor consultation, and patient admission.
-These findings are based on synthetic data and
-require validation against real hospital data.
+5. Visualizations and Output Files
 
-# CareFlow – Patient Pathway Findings
+The following project outputs have been generated:
 
-## 1. Project Overview
-CareFlow analyzes synthetic hospital patient event logs
-to identify delays in patient pathways.
+- "waiting_time_comparison.png" – comparison of activity transition times
+- "waiting_time_summary.csv" – summary statistics for activity transitions
+- "patient_elapsed_times.csv" – elapsed-time results for individual patient cases
+- "waiting_time_findings.txt" – waiting-time findings report
 
-## 2. Process Discovery
-- Patient cases: 500
-- Total events: 4,420
-- Activities: 11
+6. Recommendations
 
-## 3. Bottleneck Analysis
-The waiting-time analysis identifies transitions
-with high average elapsed times.
+1. Investigate the Lab Test → Discharge transition to understand the time between these recorded activities.
+2. Review the Triage → Doctor Consultation transition for possible workflow delays.
+3. Check timestamp accuracy and event ordering.
+4. Collect additional patient cases to improve the reliability of the analysis.
+5. Compare total journey durations with activity-level transition times.
+6. Integrate the verified results into the CareFlow dashboard.
 
-The longest transition visible in the current
-summary is Sample Collected → Lab Results Available,
-with an average of approximately 53.71 minutes.
+7. Limitations
 
-Other transitions with high elapsed times include
-Triage → Doctor Consultation and
-Treatment → Admission.
+The current dataset contains only three patient cases and is synthetic. Some activity transitions are based on only one or two cases.
 
-## 4. Recommendations
-- Investigate delays in laboratory result processing.
-- Review the time taken for doctor consultations.
-- Analyze delays in admission and discharge processes.
+The results are preliminary and should not be used to draw conclusions about actual hospital performance. Further analysis with a larger, representative dataset is required.
 
-## 5. Conclusion
-CareFlow demonstrates how process mining and
-waiting-time analysis can help identify potential
-bottlenecks in a simulated hospital workflow.
+8. Week 2 Conclusion
 
-Note: These findings are based on synthetic data,
-not actual hospital records.
+The CareFlow Week 2 work successfully validates the event log, calculates patient elapsed times, compares activity transitions, generates visualizations, and documents potential workflow bottlenecks.
+
+The results demonstrate how Python and process-mining techniques can support the analysis of patient pathways. Further validation and a larger dataset will be needed to establish reliable operational insights.
+
+Project Status: Week 2 elapsed-time analysis and waiting-time comparison completed.
