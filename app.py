@@ -26,10 +26,58 @@ def load_csv(filename):
     if path.exists():
         return pd.read_csv(path)
     return pd.DataFrame()
-events = load_csv("synthetic_event_log.csv")
+
+# Load Week 2 analysis data
+events = load_csv("patient_events.csv")
 elapsed = load_csv("patient_elapsed_times.csv")
 waiting = load_csv("waiting_time_summary.csv")
 bottlenecks = load_csv("bottleneck_summary.csv")
+
+# Patient journey duration insights
+if not elapsed.empty:
+    duration_col = next(
+        (
+            col for col in [
+                "elapsed_minutes",
+                "total_minutes",
+                "duration_minutes",
+                "elapsed_time_minutes"
+            ]
+            if col in elapsed.columns
+        ),
+        None
+    )
+
+    if duration_col:
+        durations = pd.to_numeric(
+            elapsed[duration_col],
+            errors="coerce"
+        ).dropna()
+
+        if not durations.empty:
+            st.header("Patient Journey Duration")
+
+            col1, col2, col3 = st.columns(3)
+
+            col1.metric(
+                "Average Journey",
+                f"{durations.mean():.1f} minutes"
+            )
+
+            col2.metric(
+                "Longest Journey",
+                f"{durations.max():.1f} minutes"
+            )
+
+            col3.metric(
+                "Shortest Journey",
+                f"{durations.min():.1f} minutes"
+            )
+    else:
+        st.info(
+            "Journey duration column not found. "
+            "We will match it to your CSV columns next."
+        )
 
 # Overview
 st.header("📊 Project Overview")
@@ -44,48 +92,49 @@ else:
     col1.metric("Patient Cases", patient_cases)
     col2.metric("Total Events", total_events)
     col3.metric("Unique Activities", unique_activities)
+
     
-    case_col = next(
-        (c for c in ["case_id", "patient_id", "case"]
-         if c in events.columns),
-        None
-    )
     activity_col = next(
-        (c for c in ["activity", "Activity", "event"]
+       (c for c in ["activity", "Activity", "event"]
          if c in events.columns),
         None
     )
+# Top 5 longest waiting-time transitions
+st.subheader("Top 5 Longest Waiting-Time Transitions")
 
-    cases = events[case_col].nunique() if case_col else 0
-    event_count = len(events)
-    activities = (
-        events[activity_col].nunique()
-        if activity_col else 0
+if waiting.empty:
+    st.warning("Waiting-time data is empty.")
+else:
+    top_waiting = waiting.nlargest(5, "average_minutes").copy()
+
+    top_waiting["Transition"] = (
+        top_waiting["previous_activity"].astype(str)
+        + " → "
+        + top_waiting["activity"].astype(str)
     )
 
-    a, b, c = st.columns(3)
-    a.metric("Patient Cases", f"{cases:,}")
-    b.metric("Total Events", f"{event_count:,}")
-    c.metric("Unique Activities", f"{activities:,}")
+    fig = px.bar(
+        top_waiting,
+        x="average_minutes",
+        y="Transition",
+        orientation="h",
+        text="average_minutes",
+        title="Top 5 Transitions by Average Waiting Time",
+        labels={
+            "average_minutes": "Average Waiting Time (minutes)",
+            "Transition": "Activity Transition"
+        }
+    )
 
-    if activity_col:
-        st.subheader("Patient Activity Frequency")
-        activity_counts = (
-            events[activity_col]
-            .value_counts()
-            .rename_axis("Activity")
-            .reset_index(name="Event Count")
-        )
-
-        fig = px.bar(
-            activity_counts,
-            x="Activity",
-            y="Event Count",
-            title="Number of Events per Activity",
-            text="Event Count"
-        )
-        st.plotly_chart(fig, width="stretch")
-
+    fig.update_traces(
+        texttemplate="%{text:.1f} min",
+        textposition="outside"
+    )
+    fig.update_layout(
+        yaxis={"categoryorder": "total ascending"}
+    )
+    st.plotly_chart(fig, width="stretch")
+    
 # Waiting-time analysis
 st.header("⏱️ Waiting-Time Analysis")
 
