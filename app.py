@@ -81,6 +81,67 @@ if not elapsed.empty:
             "We will match it to your CSV columns next."
         )
 
+
+# Patient Group Filters
+st.header("🔎 Patient Group Filters")
+
+filtered_events = events.copy()
+
+filter_col1, filter_col2 = st.columns(2)
+
+with filter_col1:
+    if "department" in events.columns:
+        department_options = sorted(
+            events["department"].dropna().astype(str).unique()
+        )
+
+        selected_departments = st.multiselect(
+            "Filter by Department",
+            department_options,
+            default=department_options,
+            key="department_filter",
+        )
+
+        filtered_events = filtered_events[
+            filtered_events["department"].astype(str).isin(
+                selected_departments
+            )
+        ]
+
+with filter_col2:
+    if "triage_level" in events.columns:
+        triage_options = sorted(
+            events["triage_level"].dropna().astype(str).unique()
+        )
+
+        selected_triage = st.multiselect(
+            "Filter by Triage Level",
+            triage_options,
+            default=triage_options,
+            key="triage_filter",
+        )
+
+        filtered_events = filtered_events[
+            filtered_events["triage_level"].astype(str).isin(
+                selected_triage
+            )
+        ]
+
+st.metric("Events matching filters", len(filtered_events))
+
+st.caption(
+    "The selected filters apply to the event data shown below. "
+    "Existing dashboard metrics and charts remain unchanged until "
+    "they are explicitly connected to filtered data."
+)
+
+with st.expander("View filtered event data"):
+    st.dataframe(
+        filtered_events,
+        hide_index=True,
+        width="stretch",
+    )
+
 # Overview
 st.header("📊 Project Overview")
 if events.empty:
@@ -101,6 +162,151 @@ else:
          if c in events.columns),
         None
     )
+
+
+# Patient Pathway Visualization
+st.header("🧭 Patient Pathway Visualization")
+st.caption(
+    "Explore the activity sequence followed by individual "
+    "synthetic patient cases."
+)
+
+required_columns = {"case_id", "event_number", "activity"}
+
+if not events.empty and required_columns.issubset(events.columns):
+    pathway_data = events.copy()
+
+    pathway_data["event_number"] = pd.to_numeric(
+        pathway_data["event_number"], errors="coerce"
+    )
+
+    pathway_data = pathway_data.dropna(
+        subset=["case_id", "event_number", "activity"]
+    ).sort_values(["case_id", "event_number"])
+
+    patient_ids = sorted(pathway_data["case_id"].unique())
+
+    selected_patient = st.selectbox(
+        "Choose a patient pathway",
+        ["Most Common Pathway"] + patient_ids,
+        key="patient_pathway_select",
+    )
+
+    if selected_patient == "Most Common Pathway":
+        if not transitions.empty and {
+            "previous_activity",
+            "next_activity",
+            "transition_count",
+        }.issubset(transitions.columns):
+
+            flow = transitions.copy()
+            flow["transition_count"] = pd.to_numeric(
+                flow["transition_count"], errors="coerce"
+            )
+            flow = flow.dropna(subset=["transition_count"])
+
+            flow = flow.nlargest(10, "transition_count")
+
+            fig_path = px.bar(
+                flow.sort_values("transition_count"),
+                x="transition_count",
+                y="previous_activity",
+                color="next_activity",
+                orientation="h",
+                barmode="group",
+                title="Most Frequent Activity Transitions",
+                labels={
+                    "transition_count": "Number of Transitions",
+                    "previous_activity": "Previous Activity",
+                    "next_activity": "Next Activity",
+                },
+            )
+
+            st.plotly_chart(fig_path, width="stretch")
+        else:
+            st.info("Transition frequency data is unavailable.")
+
+    else:
+        patient_flow = pathway_data[
+            pathway_data["case_id"] == selected_patient
+        ].sort_values("event_number")
+
+        patient_flow = patient_flow.drop_duplicates(
+            subset=["event_number", "activity"]
+        )
+
+        st.write(f"**Patient case:** {selected_patient}")
+        st.write(f"**Activities recorded:** {len(patient_flow)}")
+
+        journey = " → ".join(
+            patient_flow["activity"].astype(str).tolist()
+        )
+
+        st.markdown("### Patient Journey")
+        st.info(journey)
+
+        display_columns = [
+            column
+            for column in [
+                "event_number",
+                "timestamp",
+                "activity",
+                "department",
+                "triage_level",
+            ]
+            if column in patient_flow.columns
+        ]
+
+        st.dataframe(
+            patient_flow[display_columns],
+            hide_index=True,
+            width="stretch",
+        )
+
+else:
+    st.warning(
+        "Patient pathway data is unavailable or required columns are missing."
+    )
+
+
+# Activity Frequency Analysis
+st.header("📊 Activity Frequency Analysis")
+st.caption(
+    "Explore how often each activity appears in the synthetic event log."
+)
+
+if not events.empty and "activity" in events.columns:
+    activity_counts = (
+        events["activity"]
+        .value_counts()
+        .reset_index()
+    )
+
+    activity_counts.columns = ["Activity", "Event Count"]
+
+    fig_activity = px.bar(
+        activity_counts.sort_values("Event Count"),
+        x="Event Count",
+        y="Activity",
+        orientation="h",
+        title="Frequency of Patient Activities",
+        labels={
+            "Event Count": "Number of Events",
+            "Activity": "Hospital Activity",
+        },
+        text="Event Count",
+    )
+
+    st.plotly_chart(fig_activity, width="stretch")
+
+    with st.expander("View activity frequency data"):
+        st.dataframe(
+            activity_counts,
+            hide_index=True,
+            width="stretch",
+        )
+else:
+    st.info("Activity frequency data is unavailable.")
 
 # Top 5 longest waiting-time transitions
 st.subheader("Top 5 Longest Waiting-Time Transitions")
@@ -368,6 +574,55 @@ else:
     else:
         st.warning("The bottleneck CSV has unexpected column names.")
 
+
+# Actionable Bottleneck Insights
+st.header("💡 Actionable Bottleneck Insights")
+
+if not bottlenecks.empty and {
+    "transition", "mean", "median", "max"
+}.issubset(bottlenecks.columns):
+
+    insight_data = bottlenecks.copy()
+
+    for column in ["mean", "median", "max"]:
+        insight_data[column] = pd.to_numeric(
+            insight_data[column], errors="coerce"
+        )
+
+    insight_data = insight_data.dropna(subset=["mean"])
+    insight_data = insight_data.sort_values(
+        "mean", ascending=False
+    )
+
+    if not insight_data.empty:
+        top = insight_data.iloc[0]
+
+        st.metric(
+            "Highest average waiting-time transition",
+            str(top["transition"]),
+            f'{top["mean"]:.1f} minutes average',
+        )
+
+        st.write("### Recommended areas for further investigation")
+
+        for _, row in insight_data.head(3).iterrows():
+            st.markdown(
+                f"**{row['transition']}**"
+            )
+            st.write(
+                f"Average: {row['mean']:.1f} minutes | "
+                f"Median: {row['median']:.1f} minutes | "
+                f"Maximum: {row['max']:.1f} minutes"
+            )
+            st.write(
+                "Investigation idea: review the workflow handoff, "
+                "staffing or resource availability, and whether "
+                "delays are concentrated in particular cases."
+            )
+    else:
+        st.info("No valid bottleneck measurements are available.")
+else:
+    st.info("Bottleneck summary data is unavailable.")
 
 # Elapsed time data
 with st.expander("Patient Elapsed-Time Data"):
