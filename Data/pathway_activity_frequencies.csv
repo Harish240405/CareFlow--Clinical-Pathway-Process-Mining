@@ -1,0 +1,12 @@
+activity,event_count
+Patient Arrival,500
+Registration,500
+Triage,500
+Doctor Consultation,500
+Treatment,500
+Discharge,404
+Lab Test Ordered,355
+Sample Collected,355
+Lab Results Available,355
+Results Reviewed,355
+Admission,96
