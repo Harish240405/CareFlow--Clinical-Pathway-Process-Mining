@@ -85,10 +85,9 @@ if not elapsed.empty:
 # Patient Group Filters
 st.header("🔎 Patient Group Filters")
 
-filtered_events = events.copy()
-
 filter_col1, filter_col2 = st.columns(2)
 
+# Department filter options
 with filter_col1:
     if "department" in events.columns:
         department_options = sorted(
@@ -101,13 +100,10 @@ with filter_col1:
             default=department_options,
             key="department_filter",
         )
+    else:
+        selected_departments = None
 
-        filtered_events = filtered_events[
-            filtered_events["department"].astype(str).isin(
-                selected_departments
-            )
-        ]
-
+# Triage filter options
 with filter_col2:
     if "triage_level" in events.columns:
         triage_options = sorted(
@@ -120,19 +116,52 @@ with filter_col2:
             default=triage_options,
             key="triage_filter",
         )
+    else:
+        selected_triage = None
 
-        filtered_events = filtered_events[
-            filtered_events["triage_level"].astype(str).isin(
-                selected_triage
-            )
-        ]
+# Identify cases that match the selected filters
+matching_mask = pd.Series(True, index=events.index)
 
-st.metric("Events matching filters", len(filtered_events))
+if selected_departments is not None:
+    matching_mask &= (
+        events["department"].astype(str).isin(selected_departments)
+    )
+
+if selected_triage is not None:
+    matching_mask &= (
+        events["triage_level"].astype(str).isin(selected_triage)
+    )
+
+matching_case_ids = events.loc[
+    matching_mask, "case_id"
+].dropna().unique()
+
+# Keep the COMPLETE journey for each matching case
+filtered_events = events[
+    events["case_id"].isin(matching_case_ids)
+].copy()
+
+# Display filter results
+metric_col1, metric_col2 = st.columns(2)
+
+with metric_col1:
+    st.metric(
+        "Matching Patient Cases",
+        filtered_events["case_id"].nunique()
+    )
+
+with metric_col2:
+    st.metric(
+        "Events in Matching Cases",
+        len(filtered_events)
+    )
 
 st.caption(
-    "The selected filters apply to the event data shown below. "
-    "Existing dashboard metrics and charts remain unchanged until "
-    "they are explicitly connected to filtered data."
+    "Filters select patient cases with at least one event matching "
+    "the selected department and triage levels. All events belonging "
+    "to matching cases are retained so their complete pathways remain "
+    "available. Other dashboard charts and metrics are not yet connected "
+    "to these filters."
 )
 
 with st.expander("View filtered event data"):
@@ -172,9 +201,8 @@ st.caption(
 )
 
 required_columns = {"case_id", "event_number", "activity"}
-
 if not events.empty and required_columns.issubset(events.columns):
-    pathway_data = events.copy()
+    pathway_data = filtered_events.copy()
 
     pathway_data["event_number"] = pd.to_numeric(
         pathway_data["event_number"], errors="coerce"
@@ -186,82 +214,88 @@ if not events.empty and required_columns.issubset(events.columns):
 
     patient_ids = sorted(pathway_data["case_id"].unique())
 
-    selected_patient = st.selectbox(
-        "Choose a patient pathway",
-        ["Most Common Pathway"] + patient_ids,
-        key="patient_pathway_select",
-    )
-
-    if selected_patient == "Most Common Pathway":
-        if not transitions.empty and {
-            "previous_activity",
-            "next_activity",
-            "transition_count",
-        }.issubset(transitions.columns):
-
-            flow = transitions.copy()
-            flow["transition_count"] = pd.to_numeric(
-                flow["transition_count"], errors="coerce"
-            )
-            flow = flow.dropna(subset=["transition_count"])
-
-            flow = flow.nlargest(10, "transition_count")
-
-            fig_path = px.bar(
-                flow.sort_values("transition_count"),
-                x="transition_count",
-                y="previous_activity",
-                color="next_activity",
-                orientation="h",
-                barmode="group",
-                title="Most Frequent Activity Transitions",
-                labels={
-                    "transition_count": "Number of Transitions",
-                    "previous_activity": "Previous Activity",
-                    "next_activity": "Next Activity",
-                },
-            )
-
-            st.plotly_chart(fig_path, width="stretch")
-        else:
-            st.info("Transition frequency data is unavailable.")
-
+    if not patient_ids:
+        st.info("No patient cases match the selected filters.")
     else:
-        patient_flow = pathway_data[
-            pathway_data["case_id"] == selected_patient
-        ].sort_values("event_number")
-
-        patient_flow = patient_flow.drop_duplicates(
-            subset=["event_number", "activity"]
+        selected_patient = st.selectbox(
+            "Choose a patient pathway",
+            ["Most Common Pathway"] + patient_ids,
+            key="patient_pathway_select",
         )
 
-        st.write(f"**Patient case:** {selected_patient}")
-        st.write(f"**Activities recorded:** {len(patient_flow)}")
+        if selected_patient == "Most Common Pathway":
+            if not transitions.empty and {
+                "previous_activity",
+                "next_activity",
+                "transition_count",
+            }.issubset(transitions.columns):
+                # Calculate transitions from filtered patient journeys.
+                flow = pathway_data.sort_values(
+                    ["case_id", "event_number"]
+                ).copy()
+                flow["next_activity"] = (
+                    flow.groupby("case_id")["activity"].shift(-1)
+                )
+                flow = flow.dropna(subset=["activity", "next_activity"])
+                flow = (
+                    flow.groupby(["activity", "next_activity"])
+                    .size()
+                    .reset_index(name="transition_count")
+                )
+                flow = flow.rename(
+                    columns={"activity": "previous_activity"}
+                ).nlargest(10, "transition_count")
 
-        journey = " → ".join(
-            patient_flow["activity"].astype(str).tolist()
-        )
+                fig_path = px.bar(
+                    flow.sort_values("transition_count"),
+                    x="transition_count",
+                    y="previous_activity",
+                    color="next_activity",
+                    orientation="h",
+                    barmode="group",
+                    title="Most Frequent Activity Transitions",
+                    labels={
+                        "transition_count": "Number of Transitions",
+                        "previous_activity": "Previous Activity",
+                        "next_activity": "Next Activity",
+                    },
+                )
+                st.plotly_chart(fig_path, width="stretch")
+            else:
+                st.info("Transition frequency data is unavailable.")
+        else:
+            patient_flow = pathway_data[
+                pathway_data["case_id"] == selected_patient
+            ].sort_values("event_number")
+            patient_flow = patient_flow.drop_duplicates(
+                subset=["event_number", "activity"]
+            )
 
-        st.markdown("### Patient Journey")
-        st.info(journey)
+            st.write(f"**Patient case:** {selected_patient}")
+            st.write(f"**Activities recorded:** {len(patient_flow)}")
 
-        display_columns = [
-            column
-            for column in [
-                "event_number",
-                "timestamp",
-                "activity",
-                "department",
-                "triage_level",
+            journey = " → ".join(
+                patient_flow["activity"].astype(str).tolist()
+            )
+            st.markdown("### Patient Journey")
+            st.info(journey)
+
+            display_columns = [
+                column
+                for column in [
+                    "event_number",
+                    "timestamp",
+                    "activity",
+                    "department",
+                    "triage_level",
+                ]
+                if column in patient_flow.columns
             ]
-            if column in patient_flow.columns
-        ]
-
-        st.dataframe(
-            patient_flow[display_columns],
-            hide_index=True,
-            width="stretch",
-        )
+            st.dataframe(
+                patient_flow[display_columns],
+                hide_index=True,
+                width="stretch",
+            )
 
 else:
     st.warning(
@@ -276,15 +310,14 @@ st.caption(
 )
 
 if not events.empty and "activity" in events.columns:
-    activity_counts = (
-        events["activity"]
-        .value_counts()
-        .reset_index()
-    )
-
-    activity_counts.columns = ["Activity", "Event Count"]
-
-    fig_activity = px.bar(
+  activity_counts = (
+    filtered_events["activity"]
+    .value_counts()
+    .reset_index()
+)
+  
+  activity_counts.columns = ["Activity", "Event Count"]
+  fig_activity = px.bar(
         activity_counts.sort_values("Event Count"),
         x="Event Count",
         y="Activity",
@@ -295,11 +328,10 @@ if not events.empty and "activity" in events.columns:
             "Activity": "Hospital Activity",
         },
         text="Event Count",
-    )
+    )  
+  st.plotly_chart(fig_activity, width="stretch")
 
-    st.plotly_chart(fig_activity, width="stretch")
-
-    with st.expander("View activity frequency data"):
+  with st.expander("View activity frequency data"):
         st.dataframe(
             activity_counts,
             hide_index=True,
@@ -363,216 +395,252 @@ else:
 
     
 
-# Waiting-time analysis
+
+# Waiting-Time Analysis
 st.header("⏱️ Waiting-Time Analysis")
+st.caption(
+    "Elapsed time between consecutive recorded activities for "
+    "patient cases matching the selected filters."
+)
 
-if waiting.empty:
-    st.warning("Waiting-time summary CSV is missing or empty.")
+required_wait_columns = {
+    "case_id", "event_number", "timestamp", "activity"
+}
+
+if not required_wait_columns.issubset(filtered_events.columns):
+    st.warning(
+        "Waiting-time analysis requires case_id, event_number, "
+        "timestamp, and activity columns."
+    )
 else:
-    st.subheader("Waiting-Time Summary")
+    # Prepare matching patient event records
+    wait_events = filtered_events[
+        ["case_id", "event_number", "timestamp", "activity"]
+    ].copy()
 
-    # Interactive activity filter
-    if "activity" in waiting.columns:
-        activities = ["All Activities"] + sorted(
-            waiting["activity"].dropna().unique().tolist()
+    wait_events["event_number"] = pd.to_numeric(
+        wait_events["event_number"], errors="coerce"
+    )
+
+    wait_events["timestamp"] = pd.to_datetime(
+        wait_events["timestamp"], errors="coerce"
+    )
+
+    wait_events = wait_events.dropna(
+        subset=["case_id", "event_number", "timestamp", "activity"]
+    )
+
+    wait_events = wait_events.sort_values(
+        ["case_id", "event_number", "timestamp"]
+    )
+
+    # Calculate elapsed minutes since the previous event
+    wait_events["previous_activity"] = (
+        wait_events.groupby("case_id")["activity"].shift(1)
+    )
+
+    wait_events["previous_timestamp"] = (
+        wait_events.groupby("case_id")["timestamp"].shift(1)
+    )
+
+    wait_events["time_minutes"] = (
+        wait_events["timestamp"] - wait_events["previous_timestamp"]
+    ).dt.total_seconds() / 60
+
+    # Exclude first events and invalid negative time intervals
+    wait_events = wait_events[
+        wait_events["previous_timestamp"].notna()
+        & wait_events["time_minutes"].ge(0)
+    ].copy()
+
+    if wait_events.empty:
+        st.info(
+            "No valid consecutive-event time intervals are available "
+            "for the selected patient group."
         )
-
-        selected_activity = st.selectbox(
-            "Filter by Patient Activity",
-            activities,
-            key="waiting_activity_filter"
-        )
-
-        if selected_activity == "All Activities":
-            filtered_waiting = waiting.copy()
-        else:
-            filtered_waiting = waiting[
-                waiting["activity"] == selected_activity
-            ].copy()
     else:
-        filtered_waiting = waiting.copy()
-        st.warning("The activity column is missing from the waiting-time data.")
-
-    # Display the filtered data
-    st.dataframe(filtered_waiting, width="stretch")
-
-    # Calculate metrics using the filtered data
-    metric_cols = [
-        col for col in [
-            "average_minutes",
-            "median_minutes",
-            "maximum_minutes"
-        ]
-        if col in filtered_waiting.columns
-    ]
-
-    if metric_cols and not filtered_waiting.empty:
-        col1, col2, col3 = st.columns(3)
-
-        average_values = pd.to_numeric(
-            filtered_waiting["average_minutes"], errors="coerce"
-        ) if "average_minutes" in metric_cols else pd.Series(dtype=float)
-
-        median_values = pd.to_numeric(
-            filtered_waiting["median_minutes"], errors="coerce"
-        ) if "median_minutes" in metric_cols else pd.Series(dtype=float)
-
-        maximum_values = pd.to_numeric(
-            filtered_waiting["maximum_minutes"], errors="coerce"
-        ) if "maximum_minutes" in metric_cols else pd.Series(dtype=float)
-
-        if "average_minutes" in metric_cols:
-            col1.metric(
-                "Average Waiting Time",
-                f"{average_values.mean():.1f} min"
-                if average_values.notna().any() else "N/A"
+        # Summarize elapsed time by the activity reached
+        waiting_summary = (
+            wait_events.groupby("activity")["time_minutes"]
+            .agg(
+                average_minutes="mean",
+                median_minutes="median",
+                maximum_minutes="max",
+                number_of_cases="count",
             )
+            .reset_index()
+            .sort_values("average_minutes", ascending=False)
+        )
 
-        if "median_minutes" in metric_cols:
-            col2.metric(
-                "Median Waiting Time",
-                f"{median_values.median():.1f} min"
-                if median_values.notna().any() else "N/A"
-            )
+        # Overall interval metrics
+        metric1, metric2, metric3 = st.columns(3)
 
-        if "maximum_minutes" in metric_cols:
-            col3.metric(
-                "Maximum Waiting Time",
-                f"{maximum_values.max():.1f} min"
-                if maximum_values.notna().any() else "N/A"
-            )
+        metric1.metric(
+            "Average Elapsed Time",
+            f"{wait_events['time_minutes'].mean():.1f} min"
+        )
 
-    # Chart of average waiting time by activity
-    if (
-        "activity" in filtered_waiting.columns
-        and "average_minutes" in filtered_waiting.columns
-        and not filtered_waiting.empty
-    ):
+        metric2.metric(
+            "Median Elapsed Time",
+            f"{wait_events['time_minutes'].median():.1f} min"
+        )
+
+        metric3.metric(
+            "Maximum Elapsed Time",
+            f"{wait_events['time_minutes'].max():.1f} min"
+        )
+
+        st.caption(
+            "Elapsed time is measured from one recorded event to the "
+            "next within each case. These values may include workflow "
+            "time between activities and should not be interpreted as "
+            "a direct measurement of staff waiting time."
+        )
+
+        # Filter the summary by activity
+        activity_options = ["All Activities"] + sorted(
+            waiting_summary["activity"].astype(str).unique().tolist()
+        )
+
+        selected_wait_activity = st.selectbox(
+            "Filter waiting-time results by activity",
+            activity_options,
+            key="filtered_wait_activity",
+        )
+
+        if selected_wait_activity == "All Activities":
+            displayed_waiting = waiting_summary.copy()
+        else:
+            displayed_waiting = waiting_summary[
+                waiting_summary["activity"].astype(str)
+                == selected_wait_activity
+            ].copy()
+
+        st.subheader("Elapsed-Time Summary by Activity")
+
+        st.dataframe(
+            displayed_waiting.round(2),
+            hide_index=True,
+            width="stretch",
+        )
+
+        # Plot average elapsed time
         fig_waiting = px.bar(
-            filtered_waiting,
-            x="activity",
-            y="average_minutes",
-            title="Average Waiting Time by Activity",
+            displayed_waiting.sort_values("average_minutes"),
+            x="average_minutes",
+            y="activity",
+            orientation="h",
+            text="average_minutes",
+            title="Average Elapsed Time by Activity",
             labels={
-                "activity": "Activity",
-                "average_minutes": "Average Waiting Time (minutes)"
+                "average_minutes": "Average Elapsed Time (minutes)",
+                "activity": "Activity Reached",
             },
-            text="average_minutes"
         )
 
         fig_waiting.update_traces(
             texttemplate="%{text:.1f} min",
-            textposition="outside"
+            textposition="outside",
         )
-        fig_waiting.update_layout(xaxis_tickangle=-35)
 
         st.plotly_chart(fig_waiting, width="stretch")
+
+        with st.expander("View calculated event intervals"):
+            st.dataframe(
+                wait_events[
+                    [
+                        "case_id",
+                        "previous_activity",
+                        "activity",
+                        "previous_timestamp",
+                        "timestamp",
+                        "time_minutes",
+                    ]
+                ].round({"time_minutes": 2}),
+                hide_index=True,
+                width="stretch",
+            )
+
 
 
 # Workflow Bottleneck Analysis
 st.header("🚦 Workflow Bottlenecks")
 st.caption(
-    "Identify transitions with longer waiting times using synthetic patient data."
+    "Explore longer elapsed-time intervals between consecutive "
+    "activities in the selected synthetic patient group."
 )
 
-if bottlenecks.empty:
-    st.warning(
-        "Bottleneck summary is missing or empty. "
-        "Check Data/bottleneck_summary.csv."
+if "wait_events" in locals() and not wait_events.empty:
+    bottleneck_data = (
+        wait_events.groupby(
+            ["previous_activity", "activity"]
+        )["time_minutes"]
+        .agg(
+            mean="mean",
+            median="median",
+            maximum="max",
+            interval_count="count",
+        )
+        .reset_index()
+    )
+
+    bottleneck_data["transition"] = (
+        bottleneck_data["previous_activity"].astype(str)
+        + " → "
+        + bottleneck_data["activity"].astype(str)
+    )
+
+    bottleneck_data = bottleneck_data.sort_values(
+        "mean", ascending=False
+    )
+
+    st.subheader("Longest Average Elapsed-Time Transitions")
+
+    st.dataframe(
+        bottleneck_data[
+            ["transition", "mean", "median", "maximum", "interval_count"]
+        ].round(2),
+        hide_index=True,
+        width="stretch",
+    )
+
+    if not bottleneck_data.empty:
+        slowest = bottleneck_data.iloc[0]
+
+        st.metric(
+            "Longest Average Transition",
+            f"{slowest['mean']:.1f} minutes",
+        )
+        st.write(f"**Transition:** {slowest['transition']}")
+
+        fig_bottleneck = px.bar(
+            bottleneck_data.head(10).sort_values("mean"),
+            x="mean",
+            y="transition",
+            orientation="h",
+            text="mean",
+            title="Top 10 Transitions by Average Elapsed Time",
+            labels={
+                "mean": "Average Elapsed Time (minutes)",
+                "transition": "Activity Transition",
+            },
+        )
+
+        fig_bottleneck.update_traces(
+            texttemplate="%{text:.1f} min",
+            textposition="outside",
+        )
+
+        st.plotly_chart(fig_bottleneck, width="stretch")
+
+    st.caption(
+        "These are exploratory workflow intervals from synthetic data. "
+        "Longer elapsed times do not establish the cause of a delay."
     )
 else:
-    bottlenecks.columns = bottlenecks.columns.str.strip().str.lower()
-
-    required = {"transition", "mean", "median", "max"}
-
-    if required.issubset(bottlenecks.columns):
-        bottlenecks["mean"] = pd.to_numeric(
-            bottlenecks["mean"], errors="coerce"
-        )
-        bottlenecks["median"] = pd.to_numeric(
-            bottlenecks["median"], errors="coerce"
-        )
-        bottlenecks["max"] = pd.to_numeric(
-            bottlenecks["max"], errors="coerce"
-        )
-
-        valid = bottlenecks.dropna(subset=["mean", "median", "max"])
-
-        if not valid.empty:
-            slowest = valid.loc[valid["mean"].idxmax()]
-            highest = valid.loc[valid["max"].idxmax()]
-
-            col1, col2 = st.columns(2)
-
-            col1.metric(
-                "Slowest Average Transition",
-                f"{slowest['mean']:.1f} minutes"
-            )
-            col1.caption(str(slowest["transition"]))
-
-            col2.metric(
-                "Highest Maximum Transition Time",
-                f"{highest['max']:.1f} minutes"
-            )
-            col2.caption(str(highest["transition"]))
-
-            st.subheader("Compare Transition Waiting Times")
-
-            metric_choice = st.multiselect(
-                "Choose metrics",
-                ["mean", "median", "max"],
-                default=["mean", "median"],
-                format_func=lambda x: {
-                    "mean": "Average",
-                    "median": "Median",
-                    "max": "Maximum"
-                }[x],
-                key="bottleneck_metrics"
-            )
-
-            if metric_choice:
-                chart_data = valid.melt(
-                    id_vars=["transition"],
-                    value_vars=metric_choice,
-                    var_name="Metric",
-                    value_name="Minutes"
-                )
-
-                chart_data["Metric"] = chart_data["Metric"].map({
-                    "mean": "Average",
-                    "median": "Median",
-                    "max": "Maximum"
-                })
-
-                fig = px.bar(
-                    chart_data,
-                    x="Minutes",
-                    y="transition",
-                    color="Metric",
-                    barmode="group",
-                    orientation="h",
-                    title="Waiting Time by Patient Transition",
-                    labels={
-                        "Minutes": "Time (minutes)",
-                        "transition": "Patient Transition"
-                    }
-                )
-
-                fig.update_layout(
-                    yaxis={"categoryorder": "total ascending"}
-                )
-
-                st.plotly_chart(fig, width="stretch")
-
-            with st.expander("View Bottleneck Data"):
-                st.dataframe(
-                    valid.sort_values("mean", ascending=False),
-                    width="stretch"
-                )
-        else:
-            st.warning("No valid bottleneck measurements are available.")
-    else:
-        st.warning("The bottleneck CSV has unexpected column names.")
+    st.info(
+        "No valid event intervals are available for bottleneck analysis."
+    )
 
 
 # Actionable Bottleneck Insights
