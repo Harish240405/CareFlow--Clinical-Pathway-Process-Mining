@@ -1,85 +1,173 @@
+
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parent
-DATA_DIR = BASE_DIR / "Data"
-
-# Page setup
+# Page configuration
 st.set_page_config(
     page_title="CareFlow Analytics",
     page_icon="🏥",
     layout="wide"
 )
 
+# Project paths
+BASE_DIR = Path(__file__).resolve().parent
+DATA_DIR = BASE_DIR / "Data"
+
+# Dashboard title
 st.title("🏥 CareFlow Healthcare Analytics")
-st.caption("Patient pathways, waiting times and workflow bottlenecks")
+st.caption(
+    "Patient pathways, waiting times and workflow bottlenecks"
+)
 st.info("This dashboard uses synthetic data, not real hospital records.")
 
-# Data folder
-DATA_DIR = Path(__file__).parent / "Data"
-
-
+# CSV loading function
 def load_csv(filename):
     path = DATA_DIR / filename
-    if path.exists():
-        return pd.read_csv(path)
-    return pd.DataFrame()
 
-# Load Week 2 analysis data
-# Load Week 2 analysis data
+    if not path.exists():
+        st.warning(f"Data file not found: {filename}")
+        return pd.DataFrame()
+
+    try:
+        data = pd.read_csv(path)
+        data.columns = data.columns.astype(str).str.strip()
+        return data
+
+    except (pd.errors.EmptyDataError,
+            pd.errors.ParserError,
+            UnicodeDecodeError,
+            OSError) as error:
+        st.error(f"Could not read {filename}: {error}")
+        return pd.DataFrame()
+
+# Load data BEFORE using it anywhere
 events = load_csv("synthetic_event_log.csv")
 elapsed = load_csv("pathway_journey_summary.csv")
 transitions = load_csv("pathway_transition_summary.csv")
 waiting = load_csv("waiting_time_summary.csv")
 bottlenecks = load_csv("bottleneck_summary.csv")
 
-# Patient journey duration insights
-if not elapsed.empty:
-    duration_col = next(
-        (
-            col for col in [
-                "elapsed_minutes",
-                "total_minutes",
-                "duration_minutes",
-                "elapsed_time_minutes"
-            ]
-            if col in elapsed.columns
-        ),
-        None
+
+# Executive Summary
+st.header("📋 Executive Summary")
+
+if not events.empty:
+    total_patients = (
+        events["case_id"].nunique()
+        if "case_id" in events.columns
+        else 0
     )
 
-    if duration_col:
-        durations = pd.to_numeric(
-            elapsed[duration_col],
-            errors="coerce"
-        ).dropna()
+    st.subheader("Project Snapshot")
 
-        if not durations.empty:
-            st.header("Patient Journey Duration")
+    col1, col2 = st.columns(2)
+    col1.metric("Synthetic Patients", f"{total_patients:,}")
+    col2.metric("Recorded Events", f"{len(events):,}")
 
-            col1, col2, col3 = st.columns(3)
+    st.markdown("### Project Purpose")
+    st.write(
+        "CareFlow analyzes synthetic patient event logs to explore "
+        "patient pathways, elapsed times between activities, and "
+        "potential workflow bottlenecks."
+    )
 
-            col1.metric(
-                "Average Journey",
-                f"{durations.mean():.1f} minutes"
-            )
+    st.caption(
+        "All records are synthetic. Findings are exploratory and "
+        "do not establish the causes of delays in a real hospital."
+    )
 
-            col2.metric(
-                "Longest Journey",
-                f"{durations.max():.1f} minutes"
-            )
 
-            col3.metric(
-                "Shortest Journey",
-                f"{durations.min():.1f} minutes"
-            )
-    else:
-        st.info(
-            "Journey duration column not found. "
-            "We will match it to your CSV columns next."
-        )
+# Data folder
+DATA_DIR = Path(__file__).resolve().parent / "Data"
+
+
+
+
+def load_csv(filename):
+    """Load a CSV safely and report missing or invalid files."""
+    path = DATA_DIR / filename
+
+    if not path.exists():
+        st.warning(f"Data file not found: {filename}")
+        return pd.DataFrame()
+
+    try:
+        if path.stat().st_size == 0:
+            st.warning(f"Data file is empty: {filename}")
+            return pd.DataFrame()
+
+        data = pd.read_csv(path)
+
+        if data.empty:
+            st.info(f"No records found in: {filename}")
+
+        # Normalize column names to remove accidental whitespace
+        data.columns = data.columns.astype(str).str.strip()
+
+        return data
+
+    except pd.errors.EmptyDataError:
+        st.warning(f"Data file contains no readable data: {filename}")
+    except pd.errors.ParserError:
+        st.error(f"Could not parse CSV file: {filename}")
+    except UnicodeDecodeError:
+        st.error(f"Text encoding problem in CSV file: {filename}")
+    except OSError as error:
+        st.error(f"Could not read {filename}: {error}")
+
+    return pd.DataFrame()
+
+# CareFlow Overview KPI Cards
+st.header("📌 CareFlow Overview")
+
+total_patients = (
+    events["case_id"].nunique()
+    if not events.empty and "case_id" in events.columns
+    else 0
+)
+
+total_events = len(events)
+
+duration_col = next(
+    (
+        col for col in [
+            "elapsed_minutes",
+            "total_minutes",
+            "duration_minutes",
+            "elapsed_time_minutes"
+        ]
+        if col in elapsed.columns
+    ),
+    None
+)
+
+if not elapsed.empty and duration_col:
+    journey_durations = pd.to_numeric(
+        elapsed[duration_col], errors="coerce"
+    ).dropna()
+else:
+    journey_durations = pd.Series(dtype=float)
+
+avg_journey = (
+    f"{journey_durations.mean():.1f} min"
+    if not journey_durations.empty
+    else "N/A"
+)
+
+longest_journey = (
+    f"{journey_durations.max():.1f} min"
+    if not journey_durations.empty
+    else "N/A"
+)
+
+k1, k2, k3, k4 = st.columns(4)
+
+k1.metric("Total Patients", f"{total_patients:,}")
+k2.metric("Recorded Events", f"{total_events:,}")
+k3.metric("Average Journey", avg_journey)
+k4.metric("Longest Journey", longest_journey)
 
 
 # Patient Group Filters
@@ -218,90 +306,89 @@ if not events.empty and required_columns.issubset(events.columns):
         st.info("No patient cases match the selected filters.")
     else:
         selected_patient = st.selectbox(
-            "Choose a patient pathway",
-            ["Most Common Pathway"] + patient_ids,
-            key="patient_pathway_select",
-        )
-
-        if selected_patient == "Most Common Pathway":
-            if not transitions.empty and {
-                "previous_activity",
-                "next_activity",
-                "transition_count",
-            }.issubset(transitions.columns):
-                # Calculate transitions from filtered patient journeys.
-                flow = pathway_data.sort_values(
-                    ["case_id", "event_number"]
-                ).copy()
-                flow["next_activity"] = (
-                    flow.groupby("case_id")["activity"].shift(-1)
+                    "Choose a patient pathway",
+                    ["Most Common Pathway"] + patient_ids,
+                    key="patient_pathway_select",
                 )
-                flow = flow.dropna(subset=["activity", "next_activity"])
-                flow = (
-                    flow.groupby(["activity", "next_activity"])
-                    .size()
-                    .reset_index(name="transition_count")
-                )
-                flow = flow.rename(
-                    columns={"activity": "previous_activity"}
-                ).nlargest(10, "transition_count")
-
-                fig_path = px.bar(
-                    flow.sort_values("transition_count"),
-                    x="transition_count",
-                    y="previous_activity",
-                    color="next_activity",
-                    orientation="h",
-                    barmode="group",
-                    title="Most Frequent Activity Transitions",
-                    labels={
-                        "transition_count": "Number of Transitions",
-                        "previous_activity": "Previous Activity",
-                        "next_activity": "Next Activity",
-                    },
-                )
-                st.plotly_chart(fig_path, width="stretch")
-            else:
-                st.info("Transition frequency data is unavailable.")
-        else:
-            patient_flow = pathway_data[
-                pathway_data["case_id"] == selected_patient
-            ].sort_values("event_number")
-            patient_flow = patient_flow.drop_duplicates(
-                subset=["event_number", "activity"]
-            )
-
-            st.write(f"**Patient case:** {selected_patient}")
-            st.write(f"**Activities recorded:** {len(patient_flow)}")
-
-            journey = " → ".join(
-                patient_flow["activity"].astype(str).tolist()
-            )
-            st.markdown("### Patient Journey")
-            st.info(journey)
-
-            display_columns = [
-                column
-                for column in [
-                    "event_number",
-                    "timestamp",
-                    "activity",
-                    "department",
-                    "triage_level",
-                ]
-                if column in patient_flow.columns
-            ]
-            st.dataframe(
-                patient_flow[display_columns],
-                hide_index=True,
-                width="stretch",
-            )
-
-else:
-    st.warning(
-        "Patient pathway data is unavailable or required columns are missing."
-    )
-
+        
+    if selected_patient == "Most Common Pathway":
+                    if not transitions.empty and {
+                        "previous_activity",
+                        "next_activity",
+                        "transition_count",
+                    }.issubset(transitions.columns):
+                        # Calculate transitions from filtered patient journeys.
+                        flow = pathway_data.sort_values(
+                            ["case_id", "event_number"]
+                        ).copy()
+                        flow["next_activity"] = (
+                            flow.groupby("case_id")["activity"].shift(-1)
+                        )
+                        flow = flow.dropna(subset=["activity", "next_activity"])
+                        flow = (
+                            flow.groupby(["activity", "next_activity"])
+                            .size()
+                            .reset_index(name="transition_count")
+                        )
+                        flow = flow.rename(
+                            columns={"activity": "previous_activity"}
+                        ).nlargest(10, "transition_count")
+        
+                        
+                        fig_path = px.bar(
+                            flow.sort_values(
+                                "transition_count",
+                                ascending=True
+                            ).tail(15),
+                            x="transition_count",
+                            y="previous_activity",
+                            color="next_activity",
+                            orientation="h",
+                            barmode="stack",
+                            title="Most Frequent Activity Transitions",
+                            labels={
+                                "transition_count": "Number of Transitions",
+                                "previous_activity": "Previous Activity",
+                                "next_activity": "Next Activity",
+                            },
+                            hover_data=["next_activity", "transition_count"],
+                        )
+        
+                    
+                        fig_path.update_layout(
+                            height=650,
+                            autosize=True,
+                            margin=dict(
+                                l=30,
+                                r=20,
+                                t=140,
+                                b=60
+                            ),
+                            title=dict(
+                                text="Most Frequent Activity Transitions",
+                                x=0.02,
+                                y=0.98
+                            ),
+                            legend=dict(
+                                title_text="Next Activity",
+                                orientation="h",
+                                yanchor="bottom",
+                                y=1.12,
+                                xanchor="left",
+                                x=0.02,
+                                entrywidth=130,
+                                entrywidthmode="pixels"
+                            ),
+                            xaxis_title="Number of Transitions",
+                            yaxis_title="Previous Activity",
+                            bargap=0.25,
+                        )
+        
+                        fig_path.update_yaxes(
+                            automargin=True
+                        )
+        
+        
 
 # Activity Frequency Analysis
 st.header("📊 Activity Frequency Analysis")
@@ -310,28 +397,38 @@ st.caption(
 )
 
 if not events.empty and "activity" in events.columns:
-  activity_counts = (
-    filtered_events["activity"]
-    .value_counts()
-    .reset_index()
-)
-  
-  activity_counts.columns = ["Activity", "Event Count"]
-  fig_activity = px.bar(
-        activity_counts.sort_values("Event Count"),
+    activity_counts = (
+        filtered_events["activity"]
+        .value_counts()
+        .rename_axis("Activity")
+        .reset_index(name="Event Count")
+    )
+
+    activity_counts = activity_counts.sort_values("Event Count", ascending=True)
+
+    fig_activity = px.bar(
+        activity_counts,
         x="Event Count",
         y="Activity",
         orientation="h",
-        title="Frequency of Patient Activities",
-        labels={
-            "Event Count": "Number of Events",
-            "Activity": "Hospital Activity",
-        },
-        text="Event Count",
-    )  
-  st.plotly_chart(fig_activity, width="stretch")
+        color="Activity",
+        color_discrete_sequence=px.colors.qualitative.Set2,
+        title="Activity Frequency"
+    )
 
-  with st.expander("View activity frequency data"):
+    fig_activity.update_layout(
+        height=520,
+        margin=dict(l=40, r=30, t=60, b=50),
+        xaxis_title="Number of Events",
+        yaxis_title="Hospital Activity",
+    )
+
+    fig_activity.update_yaxes(automargin=True)
+    fig_activity.update_xaxes(rangemode="tozero")
+
+    st.plotly_chart(fig_activity, width="stretch")
+
+    with st.expander("View activity frequency data"):
         st.dataframe(
             activity_counts,
             hide_index=True,
@@ -339,6 +436,109 @@ if not events.empty and "activity" in events.columns:
         )
 else:
     st.info("Activity frequency data is unavailable.")
+
+
+# Waiting-Time Analysis
+st.header("⏱️ Waiting-Time Analysis")
+st.caption(
+    "Compare average elapsed time between consecutive activities. "
+    "These intervals are not proof of the cause of a delay."
+)
+
+if not waiting.empty:
+    required = {
+        "previous_activity",
+        "activity",
+        "average_minutes",
+        "number_of_cases",
+    }
+
+    if required.issubset(waiting.columns):
+        wait_chart = waiting.copy()
+
+        wait_chart["average_minutes"] = pd.to_numeric(
+            wait_chart["average_minutes"], errors="coerce"
+        )
+        wait_chart["number_of_cases"] = pd.to_numeric(
+            wait_chart["number_of_cases"], errors="coerce"
+        )
+
+        wait_chart = wait_chart.dropna(
+            subset=["average_minutes", "number_of_cases"]
+        )
+
+        wait_chart["transition"] = (
+            wait_chart["previous_activity"].astype(str)
+            + " → "
+            + wait_chart["activity"].astype(str)
+        )
+
+        wait_chart = wait_chart.sort_values(
+            "average_minutes", ascending=True
+        )
+
+        fig_wait = px.bar(
+            wait_chart,
+            x="average_minutes",
+            y="transition",
+            orientation="h",
+            color="average_minutes",
+            hover_data=["number_of_cases"],
+            text="average_minutes",
+            title="Average Elapsed Time by Transition",
+            labels={
+                "average_minutes": "Average elapsed time (minutes)",
+                "transition": "Activity transition",
+                "number_of_cases": "Number of cases",
+            },
+            color_continuous_scale="Blues",
+        )
+
+        fig_wait.update_traces(
+            texttemplate="%{text:.1f} min",
+            textposition="outside",
+            cliponaxis=False,
+        )
+
+        fig_wait.update_layout(
+            height=420,
+            margin=dict(l=20, r=60, t=70, b=40),
+            coloraxis_showscale=False,
+            yaxis_title="",
+        )
+
+        st.plotly_chart(
+            fig_wait,
+            width="stretch",
+            config={"responsive": True},
+        )
+
+        st.subheader("Waiting-Time Details")
+
+        display_cols = [
+            "previous_activity",
+            "activity",
+            "average_minutes",
+            "median_minutes",
+            "maximum_minutes",
+            "number_of_cases",
+        ]
+
+        available_cols = [
+            col for col in display_cols if col in wait_chart.columns
+        ]
+
+        st.dataframe(
+            wait_chart[available_cols].sort_values(
+                "average_minutes", ascending=False
+            ),
+            width="stretch",
+            hide_index=True,
+        )
+    else:
+        st.warning("The waiting-time summary is missing required columns.")
+else:
+    st.info("No waiting-time summary data is available.")
 
 # Top 5 longest waiting-time transitions
 st.subheader("Top 5 Longest Waiting-Time Transitions")
@@ -564,17 +764,15 @@ else:
 
 
 # Workflow Bottleneck Analysis
-st.header("🚦 Workflow Bottlenecks")
+st.header(" Workflow Bottlenecks")
 st.caption(
-    "Explore longer elapsed-time intervals between consecutive "
-    "activities in the selected synthetic patient group."
+    "Explore elapsed-time intervals between consecutive activities "
+    "for the selected synthetic patient group."
 )
 
 if "wait_events" in locals() and not wait_events.empty:
     bottleneck_data = (
-        wait_events.groupby(
-            ["previous_activity", "activity"]
-        )["time_minutes"]
+        wait_events.groupby(["previous_activity", "activity"])["time_minutes"]
         .agg(
             mean="mean",
             median="median",
@@ -590,53 +788,116 @@ if "wait_events" in locals() and not wait_events.empty:
         + bottleneck_data["activity"].astype(str)
     )
 
-    bottleneck_data = bottleneck_data.sort_values(
-        "mean", ascending=False
+    bottleneck_data = bottleneck_data.dropna(
+        subset=["mean", "median", "maximum"]
     )
+
+    bottleneck_data = bottleneck_data.sort_values("mean", ascending=False)
 
     st.subheader("Longest Average Elapsed-Time Transitions")
 
+    display_bottlenecks = bottleneck_data[
+        ["transition", "mean", "median", "maximum", "interval_count"]
+    ].rename(
+        columns={
+            "transition": "Activity Transition",
+            "mean": "Average (min)",
+            "median": "Median (min)",
+            "maximum": "Maximum (min)",
+            "interval_count": "Recorded Intervals",
+        }
+    )
+
     st.dataframe(
-        bottleneck_data[
-            ["transition", "mean", "median", "maximum", "interval_count"]
-        ].round(2),
+        display_bottlenecks.round(2),
         hide_index=True,
         width="stretch",
+        height=420,
+        column_config={
+            "Activity Transition": st.column_config.TextColumn(
+                "Activity Transition",
+                width="large",
+            ),
+            "Average (min)": st.column_config.NumberColumn(
+                "Average (min)",
+                format="%.2f",
+            ),
+            "Median (min)": st.column_config.NumberColumn(
+                "Median (min)",
+                format="%.2f",
+            ),
+            "Maximum (min)": st.column_config.NumberColumn(
+                "Maximum (min)",
+                format="%.2f",
+            ),
+            "Recorded Intervals": st.column_config.NumberColumn(
+                "Recorded Intervals",
+                format="%d",
+            ),
+        },
     )
 
     if not bottleneck_data.empty:
         slowest = bottleneck_data.iloc[0]
 
-        st.metric(
-            "Longest Average Transition",
-            f"{slowest['mean']:.1f} minutes",
+        col1, col2 = st.columns(2)
+
+        col1.metric(
+            "Longest Average Interval",
+            f"{slowest['mean']:.1f} min",
         )
+
+        col2.metric(
+            "Recorded Intervals",
+            int(slowest["interval_count"]),
+        )
+
         st.write(f"**Transition:** {slowest['transition']}")
 
+        chart_data = bottleneck_data.head(10).sort_values("mean", ascending=True)
+
         fig_bottleneck = px.bar(
-            bottleneck_data.head(10).sort_values("mean"),
+            chart_data,
             x="mean",
             y="transition",
             orientation="h",
             text="mean",
-            title="Top 10 Transitions by Average Elapsed Time",
+            hover_data=["median", "maximum", "interval_count"],
+            title="Top Transitions by Average Elapsed Time",
             labels={
                 "mean": "Average Elapsed Time (minutes)",
                 "transition": "Activity Transition",
+                "median": "Median (minutes)",
+                "maximum": "Maximum (minutes)",
+                "interval_count": "Recorded Intervals",
             },
         )
 
         fig_bottleneck.update_traces(
             texttemplate="%{text:.1f} min",
             textposition="outside",
+            cliponaxis=False,
         )
 
-        st.plotly_chart(fig_bottleneck, width="stretch")
+        fig_bottleneck.update_layout(
+            height=450,
+            margin=dict(l=20, r=70, t=70, b=40),
+            yaxis_title="",
+        )
 
-    st.caption(
-        "These are exploratory workflow intervals from synthetic data. "
-        "Longer elapsed times do not establish the cause of a delay."
-    )
+        st.plotly_chart(
+            fig_bottleneck,
+            width="stretch",
+            config={"responsive": True},
+        )
+
+        st.caption(
+            "These are exploratory intervals from synthetic data. "
+            "Small interval counts indicate limited evidence. "
+            "Elapsed time alone does not establish the cause of a delay."
+        )
+    else:
+        st.info("No valid bottleneck measurements are available.")
 else:
     st.info(
         "No valid event intervals are available for bottleneck analysis."
@@ -646,51 +907,30 @@ else:
 # Actionable Bottleneck Insights
 st.header("💡 Actionable Bottleneck Insights")
 
-if not bottlenecks.empty and {
-    "transition", "mean", "median", "max"
-}.issubset(bottlenecks.columns):
+if "bottleneck_data" in locals() and not bottleneck_data.empty:
+    st.write("### Recommended areas for further investigation")
 
-    insight_data = bottlenecks.copy()
+    for _, row in bottleneck_data.head(3).iterrows():
+        st.markdown(f"**{row['transition']}**")
 
-    for column in ["mean", "median", "max"]:
-        insight_data[column] = pd.to_numeric(
-            insight_data[column], errors="coerce"
+        st.write(
+            f"Average: {row['mean']:.1f} minutes | "
+            f"Median: {row['median']:.1f} minutes | "
+            f"Maximum: {row['maximum']:.1f} minutes | "
+            f"Recorded intervals: {int(row['interval_count'])}"
         )
 
-    insight_data = insight_data.dropna(subset=["mean"])
-    insight_data = insight_data.sort_values(
-        "mean", ascending=False
-    )
-
-    if not insight_data.empty:
-        top = insight_data.iloc[0]
-
-        st.metric(
-            "Highest average waiting-time transition",
-            str(top["transition"]),
-            f'{top["mean"]:.1f} minutes average',
+        st.write(
+            "Investigation idea: review the workflow handoff, "
+            "resource availability, and whether delays are concentrated "
+            "in particular cases. Validate findings against a larger "
+            "sample before recommending process changes."
         )
-
-        st.write("### Recommended areas for further investigation")
-
-        for _, row in insight_data.head(3).iterrows():
-            st.markdown(
-                f"**{row['transition']}**"
-            )
-            st.write(
-                f"Average: {row['mean']:.1f} minutes | "
-                f"Median: {row['median']:.1f} minutes | "
-                f"Maximum: {row['max']:.1f} minutes"
-            )
-            st.write(
-                "Investigation idea: review the workflow handoff, "
-                "staffing or resource availability, and whether "
-                "delays are concentrated in particular cases."
-            )
-    else:
-        st.info("No valid bottleneck measurements are available.")
 else:
-    st.info("Bottleneck summary data is unavailable.")
+    st.info(
+        "Bottleneck insights will appear when valid event intervals "
+        "are available for the selected patient group."
+    )
 
 # Elapsed time data
 with st.expander("Patient Elapsed-Time Data"):
