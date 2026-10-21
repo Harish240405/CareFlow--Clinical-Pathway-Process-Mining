@@ -175,6 +175,70 @@ st.header("🔎 Patient Group Filters")
 
 filter_col1, filter_col2 = st.columns(2)
 
+
+# Patient Journey Duration
+st.header("⏱️ Patient Journey Duration")
+
+if not elapsed.empty:
+    duration_col = next(
+        (
+            col for col in [
+                "elapsed_minutes",
+                "total_minutes",
+                "duration_minutes",
+                "elapsed_time_minutes",
+            ]
+            if col in elapsed.columns
+        ),
+        None,
+    )
+
+    if duration_col is not None:
+        durations = pd.to_numeric(
+            elapsed[duration_col],
+            errors="coerce",
+        ).dropna()
+
+        if not durations.empty:
+            col1, col2, col3 = st.columns(3)
+
+            col1.metric(
+                "Average Journey",
+                f"{durations.mean():.1f} minutes",
+            )
+            col2.metric(
+                "Longest Journey",
+                f"{durations.max():.1f} minutes",
+            )
+            col3.metric(
+                "Shortest Journey",
+                f"{durations.min():.1f} minutes",
+            )
+
+            fig_duration = px.histogram(
+                x=durations,
+                nbins=20,
+                title="Patient Journey Duration Distribution",
+                labels={
+                    "x": "Journey Duration (minutes)",
+                    "count": "Number of Patients",
+                },
+            )
+
+            st.plotly_chart(
+                fig_duration,
+                width="stretch",
+            )
+        else:
+            st.warning("No valid journey durations found.")
+    else:
+        st.warning(
+            "Duration column not found in pathway_journey_summary.csv."
+        )
+else:
+    st.warning("Patient journey summary data is unavailable.")
+
+
 # Department filter options
 with filter_col1:
     if "department" in events.columns:
@@ -436,6 +500,115 @@ if not events.empty and "activity" in events.columns:
         )
 else:
     st.info("Activity frequency data is unavailable.")
+
+
+# Patient Outcome Analysis
+st.header("🏥 Patient Outcome Analysis")
+st.caption(
+    "Explore the final recorded outcomes of synthetic patient cases."
+)
+
+if (
+    not filtered_events.empty
+    and {"case_id", "event_number", "activity"}.issubset(
+        filtered_events.columns
+    )
+):
+    outcome_data = filtered_events[
+        ["case_id", "event_number", "activity"]
+    ].copy()
+
+    outcome_data["event_number"] = pd.to_numeric(
+        outcome_data["event_number"], errors="coerce"
+    )
+
+    outcome_data = outcome_data.dropna(
+        subset=["case_id", "event_number", "activity"]
+    )
+
+    # Find the last recorded activity for each patient
+    outcome_data = outcome_data.sort_values(
+        ["case_id", "event_number"]
+    )
+
+    final_events = outcome_data.groupby(
+        "case_id", as_index=False
+    ).tail(1)
+
+    final_events = final_events[
+        final_events["activity"].isin(["Admission", "Discharge"])
+    ]
+
+    outcome_counts = (
+        final_events.groupby("activity")["case_id"]
+        .nunique()
+        .reindex(["Discharge", "Admission"], fill_value=0)
+        .reset_index(name="Patients")
+    )
+
+    total_outcomes = outcome_counts["Patients"].sum()
+
+    if total_outcomes > 0:
+        col1, col2, col3 = st.columns(3)
+
+        discharged = int(
+            outcome_counts.loc[
+                outcome_counts["activity"] == "Discharge",
+                "Patients"
+            ].iloc[0]
+        )
+
+        admitted = int(
+            outcome_counts.loc[
+                outcome_counts["activity"] == "Admission",
+                "Patients"
+            ].iloc[0]
+        )
+
+        col1.metric("Patients Discharged", f"{discharged:,}")
+        col2.metric("Patients Admitted", f"{admitted:,}")
+        col3.metric("Cases with Recorded Outcomes", f"{total_outcomes:,}")
+
+        outcome_counts["Percentage"] = (
+            outcome_counts["Patients"] / total_outcomes * 100
+        )
+
+        fig_outcomes = px.pie(
+            outcome_counts,
+            names="activity",
+            values="Patients",
+            hole=0.45,
+            title="Final Recorded Patient Outcomes",
+        )
+
+        fig_outcomes.update_traces(
+            textposition="inside",
+            texttemplate="%{label}<br>%{value} (%{percent})",
+        )
+
+        st.plotly_chart(fig_outcomes, width="stretch")
+
+        st.dataframe(
+            outcome_counts.rename(
+                columns={
+                    "activity": "Final Outcome",
+                    "Patients": "Number of Patients",
+                    "Percentage": "Percentage (%)",
+                }
+            ).round(2),
+            hide_index=True,
+            width="stretch",
+        )
+
+        st.caption(
+            "Outcomes are inferred from each case's final recorded activity. "
+            "Cases without a final Admission or Discharge event are excluded."
+        )
+    else:
+        st.info("No final Admission or Discharge outcomes were found.")
+else:
+    st.info("Patient outcome data is unavailable or missing required columns.")
+
 
 
 # Waiting-Time Analysis
