@@ -1113,3 +1113,111 @@ with st.expander("Patient Elapsed-Time Data"):
         st.dataframe(elapsed, width="stretch")
 
 st.success("CareFlow dashboard loaded.")
+
+
+# Downloadable Analytics Reports
+st.header(" Download Analytics Reports")
+st.caption(
+    "Export synthetic patient journey and outcome data "
+    "for further analysis in Excel or other tools."
+)
+
+if not events.empty and not elapsed.empty:
+
+    # Identify the journey-duration column
+    duration_col = next(
+        (
+            col for col in [
+                "elapsed_minutes",
+                "total_minutes",
+                "duration_minutes",
+                "elapsed_time_minutes",
+            ]
+            if col in elapsed.columns
+        ),
+        None,
+    )
+
+    journey_report = elapsed.copy()
+
+    # Respect the patient-group filters when possible
+    if (
+        "case_id" in journey_report.columns
+        and "filtered_events" in locals()
+        and "case_id" in filtered_events.columns
+    ):
+        allowed_cases = filtered_events["case_id"].dropna().unique()
+        journey_report = journey_report[
+            journey_report["case_id"].isin(allowed_cases)
+        ]
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.download_button(
+            label="⬇Download Journey Summary",
+            data=journey_report.to_csv(index=False).encode("utf-8"),
+            file_name="careflow_journey_summary.csv",
+            mime="text/csv",
+            key="download_journey_summary",
+        )
+
+    # Find each case's final recorded activity
+    with col2:
+        if {
+            "case_id", "event_number", "activity"
+        }.issubset(filtered_events.columns):
+            final_events = filtered_events[
+                ["case_id", "event_number", "activity"]
+            ].copy()
+
+            final_events["event_number"] = pd.to_numeric(
+                final_events["event_number"],
+                errors="coerce",
+            )
+
+            final_events = final_events.dropna(
+                subset=["case_id", "event_number", "activity"]
+            ).sort_values(["case_id", "event_number"])
+
+            outcomes = final_events.groupby(
+                "case_id", as_index=False
+            ).tail(1)
+
+            outcomes = outcomes[
+                outcomes["activity"].isin(["Admission", "Discharge"])
+            ].rename(
+                columns={
+                    "event_number": "final_event_number",
+                    "activity": "final_outcome",
+                }
+            )
+
+            st.download_button(
+                label="⬇Download Patient Outcomes",
+                data=outcomes.to_csv(index=False).encode("utf-8"),
+                file_name="careflow_patient_outcomes.csv",
+                mime="text/csv",
+                key="download_patient_outcomes",
+            )
+        else:
+            st.info("Patient outcome export is unavailable.")
+else:
+    st.info("Journey report data is unavailable.")
+
+
+# Download Workflow Bottleneck Report
+st.subheader("Download Workflow Bottleneck Report")
+
+if not bottlenecks.empty:
+    bottleneck_csv = bottlenecks.to_csv(index=False).encode("utf-8")
+
+    st.download_button(
+        label="Download Bottleneck Report",
+        data=bottleneck_csv,
+        file_name="careflow_bottleneck_report.csv",
+        mime="text/csv",
+        key="download_bottleneck_report",
+    )
+else:
+    st.info("Bottleneck report is currently unavailable.")
