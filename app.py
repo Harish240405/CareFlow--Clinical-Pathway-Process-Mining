@@ -453,6 +453,82 @@ if not events.empty and required_columns.issubset(events.columns):
                         )
         
         
+# Patient-Level Journey Explorer
+st.header("🔍 Patient-Level Journey Explorer")
+
+if not events.empty and "case_id" in events.columns:
+    patient_ids = sorted(
+        events["case_id"].dropna().unique().tolist(),
+        key=str,
+    )
+
+    selected_patient = st.selectbox(
+        "Select a synthetic patient ID",
+        patient_ids,
+        key="patient_level_selector",
+    )
+
+    patient_events = events[
+        events["case_id"] == selected_patient
+    ].copy()
+
+    if "timestamp" in patient_events.columns:
+        patient_events["timestamp"] = pd.to_datetime(
+            patient_events["timestamp"],
+            errors="coerce",
+        )
+        patient_events = patient_events.sort_values(
+            "timestamp",
+            na_position="last",
+        )
+    elif "event_number" in patient_events.columns:
+        patient_events = patient_events.sort_values("event_number")
+
+    st.subheader(f"Journey for Patient {selected_patient}")
+
+    col1, col2 = st.columns(2)
+    col1.metric("Recorded Activities", len(patient_events))
+
+    duration = None
+    if (
+        not elapsed.empty
+        and {"case_id", "elapsed_minutes"}.issubset(elapsed.columns)
+    ):
+        match = elapsed.loc[
+            elapsed["case_id"] == selected_patient,
+            "elapsed_minutes",
+        ]
+        if not match.empty:
+            duration = pd.to_numeric(
+                match, errors="coerce"
+            ).dropna()
+
+    col2.metric(
+        "Journey Duration",
+        f"{duration.iloc[0]:.1f} minutes"
+        if duration is not None and not duration.empty
+        else "Unavailable",
+    )
+
+    columns_to_show = [
+        col for col in [
+            "event_number",
+            "timestamp",
+            "activity",
+            "department",
+            "triage_level",
+        ]
+        if col in patient_events.columns
+    ]
+
+    st.dataframe(
+        patient_events[columns_to_show],
+        hide_index=True,
+        width="stretch",
+    )
+else:
+    st.warning("Patient event data is unavailable.")
+
 
 # Activity Frequency Analysis
 st.header("📊 Activity Frequency Analysis")
