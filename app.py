@@ -7,7 +7,7 @@ from pathlib import Path
 # Page configuration
 st.set_page_config(
     page_title="CareFlow Analytics",
-    page_icon="🏥",
+    page_icon="",
     layout="wide"
 )
 
@@ -16,7 +16,7 @@ BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "Data"
 
 # Dashboard title
-st.title("🏥 CareFlow Healthcare Analytics")
+st.title("CareFlow Healthcare Analytics")
 st.caption(
     "Patient pathways, waiting times and workflow bottlenecks"
 )
@@ -24,6 +24,7 @@ st.info("This dashboard uses synthetic data, not real hospital records.")
 
 # CSV loading function
 def load_csv(filename):
+    """Load a CSV safely and report missing or invalid files."""
     path = DATA_DIR / filename
 
     if not path.exists():
@@ -31,17 +32,28 @@ def load_csv(filename):
         return pd.DataFrame()
 
     try:
+        if path.stat().st_size == 0:
+            st.warning(f"Data file is empty: {filename}")
+            return pd.DataFrame()
+
         data = pd.read_csv(path)
+
+        if data.empty:
+            st.info(f"No records found in: {filename}")
+
         data.columns = data.columns.astype(str).str.strip()
         return data
 
-    except (pd.errors.EmptyDataError,
-            pd.errors.ParserError,
-            UnicodeDecodeError,
-            OSError) as error:
+    except pd.errors.EmptyDataError:
+        st.warning(f"Data file contains no readable data: {filename}")
+    except pd.errors.ParserError:
+        st.error(f"Could not parse CSV file: {filename}")
+    except UnicodeDecodeError:
+        st.error(f"Text encoding problem in CSV file: {filename}")
+    except OSError as error:
         st.error(f"Could not read {filename}: {error}")
-        return pd.DataFrame()
 
+    return pd.DataFrame()
 # Load data BEFORE using it anywhere
 events = load_csv("synthetic_event_log.csv")
 elapsed = load_csv("pathway_journey_summary.csv")
@@ -78,46 +90,6 @@ if not events.empty:
         "do not establish the causes of delays in a real hospital."
     )
 
-
-# Data folder
-DATA_DIR = Path(__file__).resolve().parent / "Data"
-
-
-
-
-def load_csv(filename):
-    """Load a CSV safely and report missing or invalid files."""
-    path = DATA_DIR / filename
-
-    if not path.exists():
-        st.warning(f"Data file not found: {filename}")
-        return pd.DataFrame()
-
-    try:
-        if path.stat().st_size == 0:
-            st.warning(f"Data file is empty: {filename}")
-            return pd.DataFrame()
-
-        data = pd.read_csv(path)
-
-        if data.empty:
-            st.info(f"No records found in: {filename}")
-
-        # Normalize column names to remove accidental whitespace
-        data.columns = data.columns.astype(str).str.strip()
-
-        return data
-
-    except pd.errors.EmptyDataError:
-        st.warning(f"Data file contains no readable data: {filename}")
-    except pd.errors.ParserError:
-        st.error(f"Could not parse CSV file: {filename}")
-    except UnicodeDecodeError:
-        st.error(f"Text encoding problem in CSV file: {filename}")
-    except OSError as error:
-        st.error(f"Could not read {filename}: {error}")
-
-    return pd.DataFrame()
 
 # CareFlow Overview KPI Cards
 st.header("📌 CareFlow Overview")
@@ -176,69 +148,6 @@ st.header("🔎 Patient Group Filters")
 filter_col1, filter_col2 = st.columns(2)
 
 
-# Patient Journey Duration
-st.header("⏱️ Patient Journey Duration")
-
-if not elapsed.empty:
-    duration_col = next(
-        (
-            col for col in [
-                "elapsed_minutes",
-                "total_minutes",
-                "duration_minutes",
-                "elapsed_time_minutes",
-            ]
-            if col in elapsed.columns
-        ),
-        None,
-    )
-
-    if duration_col is not None:
-        durations = pd.to_numeric(
-            elapsed[duration_col],
-            errors="coerce",
-        ).dropna()
-
-        if not durations.empty:
-            col1, col2, col3 = st.columns(3)
-
-            col1.metric(
-                "Average Journey",
-                f"{durations.mean():.1f} minutes",
-            )
-            col2.metric(
-                "Longest Journey",
-                f"{durations.max():.1f} minutes",
-            )
-            col3.metric(
-                "Shortest Journey",
-                f"{durations.min():.1f} minutes",
-            )
-
-            fig_duration = px.histogram(
-                x=durations,
-                nbins=20,
-                title="Patient Journey Duration Distribution",
-                labels={
-                    "x": "Journey Duration (minutes)",
-                    "count": "Number of Patients",
-                },
-            )
-
-            st.plotly_chart(
-                fig_duration,
-                width="stretch",
-            )
-        else:
-            st.warning("No valid journey durations found.")
-    else:
-        st.warning(
-            "Duration column not found in pathway_journey_summary.csv."
-        )
-else:
-    st.warning("Patient journey summary data is unavailable.")
-
-
 # Department filter options
 with filter_col1:
     if "department" in events.columns:
@@ -294,6 +203,71 @@ filtered_events = events[
 ].copy()
 
 # Display filter results
+
+# Patient Journey Duration - Filtered Results
+st.header("⏱️ Patient Journey Duration")
+
+if not elapsed.empty and "case_id" in elapsed.columns:
+    duration_col = next(
+        (
+            col for col in [
+                "elapsed_minutes",
+                "total_minutes",
+                "duration_minutes",
+                "elapsed_time_minutes",
+            ]
+            if col in elapsed.columns
+        ),
+        None,
+    )
+
+    if duration_col is not None:
+        filtered_journeys = elapsed[
+            elapsed["case_id"].isin(matching_case_ids)
+        ].copy()
+
+        durations = pd.to_numeric(
+            filtered_journeys[duration_col],
+            errors="coerce",
+        ).dropna()
+
+        if not durations.empty:
+            col1, col2, col3 = st.columns(3)
+
+            col1.metric(
+                "Average Journey",
+                f"{durations.mean():.1f} minutes",
+            )
+            col2.metric(
+                "Longest Journey",
+                f"{durations.max():.1f} minutes",
+            )
+            col3.metric(
+                "Shortest Journey",
+                f"{durations.min():.1f} minutes",
+            )
+
+            fig_duration = px.histogram(
+                x=durations,
+                nbins=20,
+                title="Filtered Patient Journey Duration Distribution",
+                labels={
+                    "x": "Journey Duration (minutes)",
+                    "count": "Number of Patients",
+                },
+            )
+
+            st.plotly_chart(
+                fig_duration,
+                width="stretch",
+            )
+        else:
+            st.info("No journey duration data available for the selected filters.")
+    else:
+        st.warning("Duration column not found.")
+else:
+    st.warning("Patient journey summary data is unavailable.")
+
 metric_col1, metric_col2 = st.columns(2)
 
 with metric_col1:
@@ -455,10 +429,9 @@ if not events.empty and required_columns.issubset(events.columns):
         
 # Patient-Level Journey Explorer
 st.header("🔍 Patient-Level Journey Explorer")
-
-if not events.empty and "case_id" in events.columns:
+if not filtered_events.empty and "case_id" in filtered_events.columns:
     patient_ids = sorted(
-        events["case_id"].dropna().unique().tolist(),
+       filtered_events["case_id"].dropna().unique().tolist(),
         key=str,
     )
 
@@ -468,9 +441,9 @@ if not events.empty and "case_id" in events.columns:
         key="patient_level_selector",
     )
 
-    patient_events = events[
-        events["case_id"] == selected_patient
-    ].copy()
+    patient_events = filtered_events[
+    filtered_events["case_id"] == selected_patient
+].copy()
 
     if "timestamp" in patient_events.columns:
         patient_events["timestamp"] = pd.to_datetime(
