@@ -1,300 +1,225 @@
-﻿# \# Week 3 - Power BI Development
+﻿# Week 3 - Power BI Development
 
-# 
+**Date:** 1-7 November 2026  
+**Latest Update:** 7 November 2026  
+**Developer:** Harish Nimaje  
+**Project:** CareFlow Healthcare Analytics  
+**Platform:** Microsoft Power BI
 
-# \*\*Date:\*\* 1 November 2026  
+## 1. Project Overview
 
-# \*\*Developer:\*\* Harish Nimaje  
+CareFlow is a healthcare analytics project that analyzes synthetic
+hospital patient journey data.
 
-# \*\*Project:\*\* CareFlow Healthcare Analytics  
+The objective is to understand patient pathways, waiting times,
+and workflow bottlenecks.
 
-# \*\*Platform:\*\* Microsoft Power BI
+Power BI is used to create interactive reports and dashboards.
+Python and Streamlit are also used for data analysis.
 
-# 
+## 2. Dataset Information
 
-# \## 1. Project Overview
+The project uses synthetic hospital patient records.
 
-# 
+- Total event records: 4,420
+- Unique patient cases: 500
+- Patient journey summary records: 500
 
-# CareFlow is a healthcare analytics project.
+Each event represents an activity in a patient's hospital journey.
+Timestamps are used to analyze the time between activities.
 
-# It analyzes synthetic hospital patient journey data.
+## 3. Data Sources
 
-# The objective is to understand patient pathways and workflow delays.
+The following CSV files are used:
 
-# The project focuses on identifying bottlenecks in hospital processes.
+- synthetic_event_log.csv
+- pathway_journey_summary.csv
+- pathway_transition_summary.csv
+- waiting_time_summary.csv
+- bottleneck_summary.csv
 
-# Microsoft Power BI is used to build interactive reports.
+These datasets contain patient activities, journey durations,
+transition times, waiting times, and bottleneck information.
 
-# Python and Streamlit are also used for data analysis and visualization.
+## 4. Main Power BI Dashboard
 
-# 
+The main dashboard includes:
 
-# \## 2. Dataset Information
+- Patient journey overview
+- KPI cards
+- Department filtering
+- Triage Level filtering
+- Activity frequency analysis
+- Workflow bottleneck analysis
+- Patient journey duration analysis
 
-# 
+The dashboard helps users explore hospital workflow performance.
 
-# The project uses synthetic hospital patient records.
+## 5. Patient Journey Details Page
 
-# The event log contains 4,420 events.
+A second report page named Patient Journey Details was created.
 
-# The dataset represents 500 unique patient cases.
+It provides patient-level journey information.
 
-# The journey summary contains 500 patient records.
+The page contains:
 
-# Each event represents an activity in a patient's hospital journey.
+- Patient journey KPI cards
+- Patient-level details table
+- Journey duration distribution chart
+- Department slicer
+- Triage Level slicer
 
-# Timestamps are used to analyze the time between activities.
+## 6. Patient-Level Table
 
-# 
+The patient table contains:
 
-# \## 3. Data Sources
+- case_id
+- event_count
+- elapsed_minutes
+- first_event
+- last_event
 
-# 
+These fields help compare individual patient journeys.
 
-# The following CSV files are used:
+## 7. KPI Development
 
-# 
+Four KPI cards are included.
 
-# \- `synthetic\_event\_log.csv`
+### Total Patients
+- Calculation: Distinct count of case_id.
+- Dataset value: 500.
 
-# \- `pathway\_journey\_summary.csv`
+### Average Journey Duration
+- Calculation: Average of elapsed_minutes.
+- Dataset value: Approximately 179.58 minutes.
 
-# \- `pathway\_transition\_summary.csv`
+### Maximum Journey Duration
+- Calculation: Maximum of elapsed_minutes.
+- Dataset value: 332 minutes.
 
-# \- `waiting\_time\_summary.csv`
+### Shortest Journey Duration
+- Calculation: Minimum of elapsed_minutes.
+- Dataset value: 48 minutes.
 
-# \- `bottleneck\_summary.csv`
+## 8. Data Model and Relationship Validation
 
-# 
+**Review Date: 7 November 2026**
 
-# These files provide patient activity, journey duration, transition and waiting-time information.
+The Power BI Model View was inspected.
 
-# 
+The relationship between the following tables was verified:
 
-# \## 4. Main Dashboard
+- synthetic_event_log
+- pathway_journey_summary
 
-# 
+Relationship configuration:
 
-# The main dashboard was developed in Power BI.
+| Property | Configuration |
+|---|---|
+| First table | synthetic_event_log |
+| First column | case_id |
+| Second table | pathway_journey_summary |
+| Second column | case_id |
+| Cardinality | Many to One (*:1) |
+| Relationship status | Active |
+| Cross-filter direction | Both |
 
-# The report includes patient journey and workflow information.
+The existing relationship configuration was found to be correct.
+No relationship changes were required during this review.
 
-# KPI cards were created to display important metrics.
+## 9. Interactive Dashboard Development
 
-# Department and Triage Level slicers were added.
+The report includes two slicers:
 
-# Patient journey duration distribution was added.
+1. Department
+2. Triage Level
 
-# Activity frequency analysis was included.
+The slicers provide filtering options for patient journey analysis.
 
-# Workflow bottleneck analysis was included.
+The relationship and filtering configuration were reviewed.
 
-# The dashboard is designed to support interactive data exploration.
+Further testing is required to verify that all KPI cards,
+tables, and charts respond correctly to slicer selections.
 
-# 
+## 10. Patient Journey Distribution
 
-# \## 5. Patient Journey Details Page
+A horizontal bar chart displays patient journey durations.
 
-# 
+The chart helps identify differences between shorter and
+longer patient journeys.
 
-# A second report page was created.
+Further interaction validation is required.
 
-# The page is named \*\*Patient Journey Details\*\*.
+## 11. Work Completed on 7 November 2026
 
-# It provides information about individual patient journeys.
+The following activities were completed:
 
-# A patient-level table was added.
+1. Opened the Patient Journey Details report page.
+2. Reviewed the patient-level KPI cards.
+3. Inspected the patient journey details table.
+4. Reviewed the journey duration distribution chart.
+5. Inspected the Department slicer.
+6. Inspected the Triage Level slicer.
+7. Opened Power BI Model View.
+8. Inspected the case_id relationship.
+9. Verified Many-to-One cardinality.
+10. Verified that the relationship is active.
+11. Verified Both cross-filter direction.
+12. Reviewed the existing GitHub project status.
 
-# The page also includes patient journey KPI cards.
+## 12. Pending Development Tasks
 
-# A duration distribution chart was added to understand journey-time variation.
+- Configure and validate Edit Interactions.
+- Test Department slicer filtering.
+- Test Triage Level slicer filtering.
+- Verify KPI card filtering.
+- Verify patient table filtering.
+- Verify journey chart filtering.
+- Test patient-level drill-through navigation.
+- Improve visual alignment and formatting.
+- Validate KPI values against source datasets.
+- Save and review the final Power BI report.
 
-# 
+## 13. GitHub Progress
 
-# \## 6. Patient Table Columns
+Repository branch: main
 
-# 
+Remote branch: origin/main
 
-# The patient-level table contains the following fields:
+The local repository is synchronized with GitHub.
 
-# 
+The backup files app_backup.py and
+app_before_improvements.py remain untracked.
 
-# \- `case\_id`
+No new commit was created on 7 November because
+there were no modified tracked project files.
 
-# \- `event\_count`
+## 14. Next Development Session
 
-# \- `elapsed\_minutes`
+The next session will focus on Power BI visual interactions.
 
-# \- `first\_event`
+The following improvements are planned:
 
-# \- `last\_event`
+- Configure Edit Interactions.
+- Correct any filtering issues.
+- Validate all dashboard visuals.
+- Improve patient journey analysis.
+- Update project documentation.
+- Verify at least 50 meaningful changed lines before committing.
 
-# 
+## 15. Project Status
 
-# These fields help compare the number of activities and total journey duration for individual patients.
+**Week:** 3  
+**Platform:** Microsoft Power BI  
+**Report:** CareFlow_Analytics.pbix  
+**Status:** In Progress  
+**Project:** CareFlow Healthcare Analytics
 
-# 
+The main dashboard and Patient Journey Details page
+have been developed.
 
-# \## 7. KPI Development
+The data model relationship has been reviewed and verified.
 
-# 
-
-# Four KPI cards are included on the patient details page.
-
-# 
-
-# \### Total Patients
-
-# \- Calculation: Distinct count of `case\_id`.
-
-# \- Expected value: 500 patients.
-
-# 
-
-# \### Average Journey Duration
-
-# \- Calculation: Average of `elapsed\_minutes`.
-
-# \- Expected value: Approximately 179.58 minutes.
-
-# 
-
-# \### Maximum Journey Duration
-
-# \- Calculation: Maximum of `elapsed\_minutes`.
-
-# \- Expected value: 332 minutes.
-
-# 
-
-# \### Shortest Journey Duration
-
-# \- Calculation: Minimum of `elapsed\_minutes`.
-
-# \- Expected value: 48 minutes.
-
-# 
-
-# These KPIs provide a quick overview of patient journey performance.
-
-# 
-
-# \## 8. Interactive Development
-
-# 
-
-# A Department slicer was added.
-
-# A Triage Level slicer was added.
-
-# The `case\_id` field was added to the drill-through configuration.
-
-# Patient table selection was tested.
-
-# KPI filtering behaviour was checked.
-
-# KPI values returned after clearing the selection.
-
-# Further validation of slicer interactions and patient-level drill-through is required.
-
-# 
-
-# \## 9. Patient Journey Distribution
-
-# 
-
-# A patient journey duration distribution chart was added.
-
-# The chart helps visualize differences in patient journey times.
-
-# It supports analysis of shorter and longer patient journeys.
-
-# The distribution can help identify unusual journey durations.
-
-# Its interaction with report filters will be validated.
-
-# 
-
-# \## 10. Report Development Progress
-
-# 
-
-# Power BI datasets were imported.
-
-# The main report page was developed.
-
-# The Patient Journey Details page was created.
-
-# Four patient journey KPI cards were created.
-
-# The patient-level details table was added.
-
-# The journey duration distribution chart was added.
-
-# Department and Triage Level slicers were created.
-
-# The report was saved as `CareFlow\_Analytics.pbix`.
-
-# Visual formatting and interaction testing are ongoing.
-
-# 
-
-# \## 11. Remaining Tasks
-
-# 
-
-# \- Validate Department slicer behaviour.
-
-# \- Validate Triage Level slicer behaviour.
-
-# \- Test patient-level drill-through navigation.
-
-# \- Check filtering across the patient table and charts.
-
-# \- Improve the alignment and formatting of report visuals.
-
-# \- Verify KPI values against the source data.
-
-# \- Save and review the final Power BI report.
-
-# 
-
-# \## 12. Expected Outcome
-
-# 
-
-# Provide clear information about patient journeys.
-
-# Understand the duration of individual patient pathways.
-
-# Identify hospital workflow bottlenecks.
-
-# Analyze waiting times between activities.
-
-# Compare patient journeys across departments and triage levels.
-
-# Support data-driven hospital administration.
-
-# 
-
-# \## 13. Project Status
-
-# 
-
-# \*\*Week:\*\* 3  
-
-# \*\*Platform:\*\* Microsoft Power BI  
-
-# \*\*Report:\*\* `CareFlow\_Analytics.pbix`  
-
-# \*\*Status:\*\* In Progress  
-
-# \*\*Project:\*\* CareFlow Healthcare Analytics
-
-# 
-
-# The main dashboard and patient details page have been developed.
-
-# The remaining work focuses on validating report interactions and improving the final layout.
+Visual interaction testing and final dashboard improvements
+remain ongoing.
 
